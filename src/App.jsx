@@ -1,4 +1,34 @@
+import { useState } from 'react';
+
 export default function App() {
+  const [formStatus, setFormStatus] = useState('idle');
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setFormStatus('submitting');
+
+    const form = event.currentTarget;
+    const payload = Object.fromEntries(new FormData(form).entries());
+
+    try {
+      const response = await fetch('https://formsubmit.co/ajax/hebilifestyle@gmail.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) throw new Error('Submission failed');
+
+      form.reset();
+      setFormStatus('success');
+    } catch {
+      setFormStatus('error');
+    }
+  }
+
   const services = [
     ['School Transportation', 'Helping foster youth get to school safely, consistently, and on time so educational routines remain stable.'],
     ['Family Visit Transportation', 'Supporting meaningful family connection through dependable transportation for scheduled visits.'],
@@ -15,7 +45,7 @@ export default function App() {
 
   const faqs = [
     ['Who can request transportation?', 'Hebi works with DHR, child welfare agencies, institutional partners, medical providers, and families seeking private transportation support.'],
-    ['Which areas does Hebi serve?', 'Hebi currently serves Madison County and is expanding into Walker County, Lee County, and the Mobile area.'],
+    ['Which areas does Hebi serve?', 'Hebi currently serves Madison County and is expanding into Walker County, Lee County, and Mobile, Alabama.'],
     ['What transportation is available?', 'Services include school, family visit, medical and therapeutic appointment, and court-related transportation.'],
     ['How do I get started?', 'Submit the inquiry form or contact Hebi by phone or email. A team member will follow up regarding your needs and next steps.'],
   ];
@@ -23,8 +53,8 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#f7f4ef_45%,#ffffff_100%)] text-slate-800">
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3 lg:px-8">
-          <a href="#top"><img src="/hebi-logo.png" alt="Hebi Lifestyle Foster Care Services" className="h-16 w-auto sm:h-20" /></a>
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-2 lg:px-8">
+          <a href="#top"><img src="/hebi-logo.png" alt="Hebi Lifestyle Foster Care Services" className="h-14 w-auto sm:h-16" /></a>
           <nav className="hidden items-center gap-6 text-sm md:flex">
             <a href="#about" className="hover:text-[#0e2f66]">About</a>
             <a href="#services" className="hover:text-[#0e2f66]">Services</a>
@@ -58,7 +88,7 @@ export default function App() {
               <div className="rounded-3xl border border-[#dbe3ef] bg-white/95 p-6 shadow-lg"><div className="text-3xl font-semibold text-[#0e2f66]">2014</div><div className="mt-2 text-sm uppercase tracking-[0.18em] text-slate-500">Serving Madison County DHR Since</div></div>
               <div className="rounded-3xl border border-[#dbe3ef] bg-white p-6 shadow-sm sm:col-span-2">
                 <div className="text-sm uppercase tracking-[0.18em] text-slate-500">Who We Partner With</div>
-                <div className="mt-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-2"><div>Department of Human Resources</div><div>Child Welfare Agencies</div><div>Institutional Partners</div><div>Medical Providers</div><div>Families Seeking Private Transportation Support</div></div>
+                <div className="mt-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-2"><div className="flex items-start gap-2"><span className="mt-0.5 text-[#0e2f66]">✓</span><span>Department of Human Resources</span></div><div className="flex items-start gap-2"><span className="mt-0.5 text-[#0e2f66]">✓</span><span>Child Welfare Agencies</span></div><div className="flex items-start gap-2"><span className="mt-0.5 text-[#0e2f66]">✓</span><span>Institutional Partners</span></div><div className="flex items-start gap-2"><span className="mt-0.5 text-[#0e2f66]">✓</span><span>Medical Providers</span></div><div className="flex items-start gap-2"><span className="mt-0.5 text-[#0e2f66]">✓</span><span>Families Seeking Private Transportation Support</span></div></div>
               </div>
             </div>
           </div>
@@ -70,7 +100,7 @@ export default function App() {
               <div className="text-sm uppercase tracking-[0.18em] text-slate-500">About Hebi</div>
               <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#102a56] sm:text-4xl">Transportation that supports stability, dignity, and trust.</h2>
               <p className="mt-4 leading-7 text-slate-600">Hebi Lifestyle Foster Care Services was created to address a critical gap in the foster care system: dependable transportation. Behind every missed appointment or delayed visit is a larger impact on a child’s routine, support system, and overall stability.</p>
-              <p className="mt-4 leading-7 text-slate-600">Hebi has proudly provided transportation services for Madison County DHR since 2014 and is currently expanding into Walker County, Lee County, and the Mobile area. We believe transportation is more than movement. It is access to education, family, health, and continuity.</p>
+              <p className="mt-4 leading-7 text-slate-600">Hebi has proudly provided transportation services for Madison County DHR since 2014 and is currently expanding into Walker County, Lee County, and Mobile, Alabama. We believe transportation is more than movement. It is access to education, family, health, and continuity.</p>
             </div>
             <div className="rounded-3xl border border-[#dbe3ef] bg-white/95 p-8 shadow-lg">
               <div className="text-sm uppercase tracking-[0.18em] text-slate-500">Mission</div>
@@ -113,10 +143,10 @@ export default function App() {
 
         <section id="contact" className="border-t border-slate-200 bg-white/70">
           <div className="mx-auto grid max-w-7xl gap-8 px-6 py-20 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
-            <div><div className="text-sm uppercase tracking-[0.18em] text-slate-500">Contact</div><h2 className="mt-3 text-3xl font-semibold text-[#102a56] sm:text-4xl">Let’s connect.</h2><p className="mt-4 leading-7 text-slate-600">Whether you are an agency, applicant, student, family, or community partner, we would love to learn how Hebi can support your needs.</p><div className="mt-8 space-y-4"><div><strong>Email:</strong> <a className="text-[#0e2f66]" href="mailto:hebilifestyle@gmail.com">hebilifestyle@gmail.com</a></div><div><strong>Phone:</strong> <a className="text-[#0e2f66]" href="tel:3012040270">301-204-0270</a></div><div><strong>Current service area:</strong> Madison County</div><div><strong>Expanding to:</strong> Walker County, Lee County, and Mobile</div></div></div>
+            <div><div className="text-sm uppercase tracking-[0.18em] text-slate-500">Contact</div><h2 className="mt-3 text-3xl font-semibold text-[#102a56] sm:text-4xl">Let’s connect.</h2><p className="mt-4 leading-7 text-slate-600">Whether you are an agency, applicant, student, family, or community partner, we would love to learn how Hebi can support your needs.</p><div className="mt-8 space-y-4"><div><strong>Email:</strong> <a className="text-[#0e2f66]" href="mailto:hebilifestyle@gmail.com">hebilifestyle@gmail.com</a></div><div><strong>Phone:</strong> <a className="text-[#0e2f66]" href="tel:3012040270">301-204-0270</a></div><div><strong>Current service area:</strong> Madison County</div><div><strong>Expanding to:</strong> Walker County, Lee County, and Mobile, Alabama</div></div></div>
 
-            <form action="https://formsubmit.co/hebilifestyle@gmail.com" method="POST" className="rounded-3xl border border-[#dbe3ef] bg-white p-8 shadow-lg">
-              <input type="hidden" name="_subject" value="New Hebi Lifestyle Website Inquiry" /><input type="hidden" name="_captcha" value="false" /><input type="text" name="_honey" className="hidden" />
+            <form onSubmit={handleSubmit} className="rounded-3xl border border-[#dbe3ef] bg-white p-8 shadow-lg">
+              <input type="hidden" name="_subject" value="New Hebi Lifestyle Website Inquiry" />
               <div className="grid gap-4 sm:grid-cols-2">
                 <input required name="name" className="rounded-2xl border border-[#d6dfeb] bg-[#fcfdff] px-4 py-3" placeholder="Name" />
                 <input name="organization" className="rounded-2xl border border-[#d6dfeb] bg-[#fcfdff] px-4 py-3" placeholder="Organization (if applicable)" />
@@ -124,7 +154,25 @@ export default function App() {
                 <input type="tel" name="phone" className="rounded-2xl border border-[#d6dfeb] bg-[#fcfdff] px-4 py-3" placeholder="Phone" />
                 <select required name="inquiryType" defaultValue="" className="rounded-2xl border border-[#d6dfeb] bg-[#fcfdff] px-4 py-3 sm:col-span-2"><option value="" disabled>Inquiry Type</option><option>Agency Partnership</option><option>Request Transportation</option><option>Private Family Transportation</option><option>Driver Application</option><option>Student or Fellowship Interest</option><option>General Inquiry</option></select>
                 <textarea required name="message" className="min-h-[150px] rounded-2xl border border-[#d6dfeb] bg-[#fcfdff] px-4 py-3 sm:col-span-2" placeholder="Tell us how we can support you" />
-                <button type="submit" className="rounded-2xl bg-[#0e2f66] px-6 py-3 text-sm font-medium text-white sm:col-span-2">Send Inquiry</button>
+                <button
+                  type="submit"
+                  disabled={formStatus === 'submitting'}
+                  className="rounded-2xl bg-[#0e2f66] px-6 py-3 text-sm font-medium text-white shadow-[0_12px_30px_rgba(14,47,102,0.16)] transition hover:-translate-y-0.5 hover:bg-[#123b7b] disabled:cursor-not-allowed disabled:opacity-70 sm:col-span-2"
+                >
+                  {formStatus === 'submitting' ? 'Sending…' : 'Send Inquiry'}
+                </button>
+
+                {formStatus === 'success' && (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 sm:col-span-2">
+                    Thank you. Your inquiry was sent successfully. A Hebi team member will follow up soon.
+                  </div>
+                )}
+
+                {formStatus === 'error' && (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 sm:col-span-2">
+                    We could not send your inquiry. Please email hebilifestyle@gmail.com or call 301-204-0270.
+                  </div>
+                )}
               </div>
             </form>
           </div>
