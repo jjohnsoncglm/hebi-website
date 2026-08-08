@@ -1,12 +1,12 @@
 export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3 lg:px-8">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-1 lg:px-8">
         <a href="#top" aria-label="Hebi Lifestyle home">
           <img
             src="/hebi-logo.png"
             alt="Hebi Lifestyle"
-            className="h-14 w-auto sm:h-16"
+            className="h-24 w-auto sm:h-28"
           />
         </a>
 
