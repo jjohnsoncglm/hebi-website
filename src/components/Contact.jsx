@@ -2,61 +2,7 @@ import { useState } from 'react'
 
 export default function Contact() {
   const [submitted, setSubmitted] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState(false)
 
-  const handleSubmit = async (event) => {
-    event.preventDefault()
-
-    setSubmitting(true)
-    setError(false)
-
-    const form = event.currentTarget
-
-    const data = {
-      firstName: form.firstName.value,
-      lastName: form.lastName.value,
-      email: form.email.value,
-      phone: form.phone.value,
-      organization: form.organization.value,
-      inquiryType: form.inquiryType.value,
-      county: form.county.value,
-      message: form.message.value,
-      _subject: 'New Hebi Lifestyle Transportation Inquiry',
-      _template: 'table',
-      _url: 'https://hebilifestyle.com',
-    }
-
-    try {
-      const response = await fetch(
-        'https://formsubmit.co/ajax/hebilifestyle@gmail.com',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify(data),
-        }
-      )
-
-      const result = await response.json()
-
-      console.log('FormSubmit response:', result)
-
-      if (!response.ok || result.success === 'false' || result.success === false) {
-        throw new Error(result.message || 'Form submission failed')
-      }
-
-      setSubmitted(true)
-      form.reset()
-    } catch (err) {
-      console.error('FormSubmit error:', err)
-      setError(true)
-    } finally {
-      setSubmitting(false)
-    }
-  }
   return (
     <section id="contact" className="bg-white py-20">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -161,8 +107,28 @@ export default function Contact() {
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+              <form
+                action="https://formsubmit.co/hebilifestyle@gmail.com"
+                method="POST"
+                className="mt-8 space-y-6"
+              >
+                <input
+                type="hidden"
+                name="_subject"
+                value="New Hebi Lifestyle Transportation Inquiry"
+              />
 
+              <input
+                type="hidden"
+                name="_template"
+                value="table"
+              />
+
+              <input
+                type="hidden"
+                name="_next"
+                value="https://hebilifestyle.com"
+              />
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div>
                     <label
@@ -327,17 +293,11 @@ export default function Contact() {
 
                 <button
                   type="submit"
-                  disabled={submitting}
-                  className="w-full rounded-xl bg-[#102a56] px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#174c91] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full rounded-xl bg-[#102a56] px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#174c91]"
                 >
-                  {submitting ? 'Sending Inquiry...' : 'Submit Inquiry'}
+                  Submit Inquiry
                 </button>
-                
-                {error && (
-                  <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                    We could not send your inquiry. Please try again or contact Hebi directly.
-                  </div>
-                )}
+
                 <p className="text-center text-xs leading-5 text-slate-400">
                   Submission of this form does not guarantee transportation
                   availability or establish a service agreement.
