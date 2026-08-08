@@ -100,7 +100,7 @@ export default function Contact() {
               <input
                 type="hidden"
                 name="_next"
-                value="https://hebilifestyle.com"
+                value="https://hebilifestyle.com/thank-you"
               />
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div>

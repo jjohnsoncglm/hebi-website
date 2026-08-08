@@ -6,8 +6,14 @@ import Services from './components/Services'
 import WhyHebi from './components/WhyHebi'
 import ServiceArea from './components/ServiceArea'
 import Contact from './components/Contact'
+import ThankYou from './components/ThankYou'
 
 export default function App() {
+  const isThankYouPage = window.location.pathname === '/thank-you'
+
+  if (isThankYouPage) {
+    return <ThankYou />
+  }
   return (
     <div className="min-h-screen bg-[#fbfaf7] text-slate-800">
       <Navbar />
