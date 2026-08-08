@@ -1,7 +1,4 @@
-import { useState } from 'react'
-
 export default function Contact() {
-  const [submitted, setSubmitted] = useState(false)
 
   return (
     <section id="contact" className="bg-white py-20">
@@ -83,30 +80,6 @@ export default function Contact() {
               member of the Hebi team will follow up with you.
             </p>
 
-            {submitted ? (
-              <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-8">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-xl text-emerald-700">
-                  ✓
-                </div>
-
-                <h4 className="mt-5 text-xl font-semibold text-[#102a56]">
-                  Thank you for contacting Hebi.
-                </h4>
-
-                <p className="mt-2 leading-7 text-slate-600">
-                  Your inquiry has been received. A member of our team will
-                  follow up with you regarding your transportation needs.
-                </p>
-
-                <button
-                  type="button"
-                  onClick={() => setSubmitted(false)}
-                  className="mt-6 text-sm font-semibold text-[#174c91]"
-                >
-                  Submit another inquiry
-                </button>
-              </div>
-            ) : (
               <form
                 action="https://formsubmit.co/hebilifestyle@gmail.com"
                 method="POST"
@@ -303,7 +276,6 @@ export default function Contact() {
                   availability or establish a service agreement.
                 </p>
               </form>
-            )}
           </div>
         </div>
       </div>
