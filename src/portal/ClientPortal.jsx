@@ -257,6 +257,100 @@ export default function ClientPortal() {
             </div>
           </div>
 
+          {/* Rider Information */}
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="border-b border-slate-200 pb-5">
+              <h2 className="text-xl font-semibold text-[#102a56]">
+                Rider Information
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Tell us who will be receiving transportation services.
+              </p>
+            </div>
+
+            <div className="mt-6 grid gap-6 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Rider First Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="First name"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Rider Last Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="Last name"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Date of Birth
+                </label>
+                <input
+                  type="date"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Case / Client ID
+                  <span className="ml-1 font-normal text-slate-400">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Case or client ID"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Primary Contact Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contact name"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Primary Contact Phone
+                </label>
+                <input
+                  type="tel"
+                  placeholder="(256) 555-0123"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Special Transportation Needs
+              </label>
+              <textarea
+                rows="4"
+                placeholder="Wheelchair, car seat, mobility assistance, behavioral considerations, or other transportation needs."
+                className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+              />
+              <p className="mt-2 text-xs text-slate-400">
+                Include any information the Hebi team should know to provide safe and appropriate transportation.
+              </p>
+            </div>
+          </div>
+
         </div>
        </div>
       )
