@@ -445,6 +445,56 @@ export default function ClientPortal() {
             </div>
           </div>
 
+          {/* Review & Submit */}
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="border-b border-slate-200 pb-5">
+              <h2 className="text-xl font-semibold text-[#102a56]">
+                Review & Submit Request
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Review the transportation details above before submitting your request.
+              </p>
+            </div>
+
+            <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-5">
+              <p className="text-sm font-semibold text-[#102a56]">
+                What happens after you submit?
+              </p>
+
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Your transportation request will be sent to the Hebi team for review.
+                Submission does not automatically confirm transportation. You will be
+                notified once the request has been reviewed and scheduled.
+              </p>
+            </div>
+
+            <label className="mt-6 flex items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-[#102a56] focus:ring-[#174c91]"
+              />
+
+              <span className="text-sm leading-6 text-slate-600">
+                I confirm that the information provided in this transportation request
+                is accurate to the best of my knowledge and that I am authorized to
+                submit this request.
+              </span>
+            </label>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs leading-5 text-slate-400">
+                Requests are subject to availability and confirmation by the Hebi team.
+              </p>
+
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-xl bg-[#102a56] px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#174c91]"
+              >
+                Submit Transportation Request
+              </button>
+            </div>
+          </div>
+
         </div>
        </div>
       )
