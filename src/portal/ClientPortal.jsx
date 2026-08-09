@@ -351,6 +351,100 @@ export default function ClientPortal() {
             </div>
           </div>
 
+                    {/* Trip Contact & Instructions */}
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="border-b border-slate-200 pb-5">
+              <h2 className="text-xl font-semibold text-[#102a56]">
+                Trip Contact & Instructions
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Provide the contact and timing details needed to coordinate the trip.
+              </p>
+            </div>
+
+            <div className="mt-6 grid gap-6 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Required Arrival / Appointment Time
+                </label>
+                <input
+                  type="time"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Pickup Contact Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="Pickup contact"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Pickup Contact Phone
+                </label>
+                <input
+                  type="tel"
+                  placeholder="(256) 555-0123"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Destination Contact Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="Destination contact"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Destination Contact Phone
+                </label>
+                <input
+                  type="tel"
+                  placeholder="(256) 555-0123"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Authorized Release / Receiving Person
+                  <span className="ml-1 font-normal text-slate-400">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Name of authorized person"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Additional Trip Instructions
+              </label>
+              <textarea
+                rows="4"
+                placeholder="Check-in instructions, entrance or building details, gate codes, pickup notes, release instructions, or anything else the Hebi team should know."
+                className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+              />
+              <p className="mt-2 text-xs text-slate-400">
+                Do not include unnecessary sensitive information. Only provide details needed to coordinate transportation safely.
+              </p>
+            </div>
+          </div>
+
         </div>
        </div>
       )
