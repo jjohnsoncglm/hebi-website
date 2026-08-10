@@ -8,10 +8,12 @@ import ServiceArea from './components/ServiceArea'
 import Contact from './components/Contact'
 import ThankYou from './components/ThankYou'
 import ClientPortal from './portal/ClientPortal'
+import AdminPortal from './portal/AdminPortal'
 
 export default function App() {
   const isThankYouPage = window.location.pathname === '/thank-you'
   const isClientPortal = window.location.pathname === '/portal'
+  const isAdminPortal = window.location.pathname === '/admin'
 
   if (isThankYouPage) {
     return <ThankYou />
@@ -19,6 +21,10 @@ export default function App() {
 
   if (isClientPortal) {
     return <ClientPortal />
+  }
+
+  if (isAdminPortal) {
+  return <AdminPortal />
   }
   
   return (
