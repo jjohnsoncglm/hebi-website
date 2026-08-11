@@ -1,4 +1,7 @@
+import { useState } from 'react'
+
 export default function AdminPortal() {
+  const [activeView, setActiveView] = useState('overview')
   const stats = [
     { label: 'Active Cases', value: '12', detail: 'Across current service areas' },
     { label: 'Available Cases', value: '4', detail: 'Waiting for driver claim' },
@@ -30,6 +33,194 @@ export default function AdminPortal() {
     },
   ]
 
+  if (activeView === 'cases') {
+    return (
+      <div className="min-h-screen bg-[#f5f7fb] text-slate-800">
+        <aside className="fixed left-0 top-0 hidden h-screen w-64 flex-col bg-[#102a56] px-5 py-7 text-white lg:flex">
+          <a href="/" className="mb-8 block">
+            <img
+              src="/hebi-logo.png"
+              alt="Hebi Lifestyle"
+              className="h-20 w-auto brightness-0 invert"
+            />
+          </a>
+
+          <p className="mb-4 px-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-blue-200">
+            Admin Portal
+          </p>
+
+          <nav className="space-y-2">
+            <button
+              type="button"
+              onClick={() => setActiveView('overview')}
+              className="block w-full rounded-xl px-4 py-3 text-left text-sm font-semibold text-blue-100 transition hover:bg-white/10"
+            >
+              Overview
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveView('cases')}
+              className="block w-full rounded-xl bg-white/15 px-4 py-3 text-left text-sm font-semibold text-white"
+            >
+              Cases
+            </button>
+          </nav>
+        </aside>
+
+        <main className="lg:ml-64">
+          <header className="border-b border-slate-200 bg-white px-6 py-5 sm:px-8 lg:px-10">
+            <div className="mx-auto flex max-w-7xl items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#174c91]">
+                  Hebi Lifestyle
+                </p>
+                <h1 className="mt-1 text-xl font-semibold text-[#102a56]">
+                  Case Management
+                </h1>
+              </div>
+
+              <button
+                type="button"
+                className="rounded-xl bg-[#102a56] px-5 py-3 text-sm font-semibold text-white"
+              >
+                + Create New Case
+              </button>
+            </div>
+          </header>
+
+          <div className="mx-auto max-w-7xl space-y-6 px-6 py-8 sm:px-8 lg:px-10">
+            <section>
+              <p className="text-sm font-medium text-[#174c91]">
+                Operations
+              </p>
+
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-[#102a56]">
+                Cases
+              </h2>
+
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
+                Review transportation requests, manage case assignments, and track each case through completion.
+              </p>
+            </section>
+
+            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  New Requests
+                </p>
+                <p className="mt-3 text-3xl font-bold text-[#102a56]">3</p>
+                <p className="mt-1 text-xs text-slate-400">Awaiting review</p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  Available
+                </p>
+                <p className="mt-3 text-3xl font-bold text-[#102a56]">4</p>
+                <p className="mt-1 text-xs text-slate-400">Open for driver claim</p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  Assigned
+                </p>
+                <p className="mt-3 text-3xl font-bold text-[#102a56]">8</p>
+                <p className="mt-1 text-xs text-slate-400">Driver assigned</p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  Completed
+                </p>
+                <p className="mt-3 text-3xl font-bold text-[#102a56]">18</p>
+                <p className="mt-1 text-xs text-slate-400">Completed transportation</p>
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h3 className="font-semibold text-[#102a56]">All Cases</h3>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Current transportation case activity
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <input
+                    type="text"
+                    placeholder="Search cases..."
+                    className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-[#174c91]"
+                  />
+
+                  <select className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-600 outline-none">
+                    <option>All Statuses</option>
+                    <option>New Request</option>
+                    <option>Available</option>
+                    <option>Claimed</option>
+                    <option>Assigned</option>
+                    <option>Scheduled</option>
+                    <option>Completed</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {recentCases.map((caseItem) => (
+                  <div
+                    key={caseItem.id}
+                    className="grid gap-4 px-6 py-5 md:grid-cols-[1.1fr_1.1fr_1fr_auto_auto] md:items-center"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-[#102a56]">
+                        {caseItem.id}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {caseItem.county}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-700">
+                        {caseItem.service}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">
+                        {caseItem.driver}
+                      </p>
+                    </div>
+
+                    <span
+                      className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${
+                        caseItem.status === 'Active'
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : caseItem.status === 'Available'
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'bg-amber-50 text-amber-700'
+                      }`}
+                    >
+                      {caseItem.status}
+                    </span>
+
+                    <button
+                      type="button"
+                      className="text-sm font-semibold text-[#174c91]"
+                    >
+                      View Case
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+    )
+  }
+  
   return (
     <div className="min-h-screen bg-[#f5f7fb] text-slate-800">
       <aside className="fixed left-0 top-0 hidden h-screen w-64 flex-col bg-[#102a56] px-5 py-7 text-white lg:flex">
@@ -46,19 +237,29 @@ export default function AdminPortal() {
         </p>
 
         <nav className="space-y-2">
-          <a
-            href="#overview"
-            className="block rounded-xl bg-white/15 px-4 py-3 text-sm font-semibold"
-          >
+          <button
+            type="button"
+            onClick={() => setActiveView('overview')}
+            className={`block w-full rounded-xl px-4 py-3 text-left text-sm font-semibold transition ${
+                activeView === 'overview'
+                    ? 'bg-white/15 text-white'
+                    : 'text-blue-100 hover:bg-white/10'
+            }`}
+        >
             Overview
-          </a>
+        </button>
 
-          <a
-            href="#cases"
-            className="block rounded-xl px-4 py-3 text-sm text-blue-100 transition hover:bg-white/10"
-          >
+          <button
+            type="button"
+            onClick={() => setActiveView('cases')}
+            className={`block w-full rounded-xl px-4 py-3 text-left text-sm font-semibold transition ${
+                activeView === 'cases'
+                ? 'bg-white/15 text-white'
+                : 'text-blue-100 hover:bg-white/10'
+            }`}
+           >
             Cases
-          </a>
+           </button>
 
           <a
             href="#schedule"
