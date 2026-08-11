@@ -2,6 +2,8 @@ import { useState } from 'react'
 
 export default function AdminPortal() {
   const [activeView, setActiveView] = useState('overview')
+  const [selectedCase, setSelectedCase] = useState(null)
+
   const stats = [
     { label: 'Active Cases', value: '12', detail: 'Across current service areas' },
     { label: 'Available Cases', value: '4', detail: 'Waiting for driver claim' },
@@ -32,6 +34,348 @@ export default function AdminPortal() {
       status: 'Claimed',
     },
   ]
+
+  if (selectedCase) {
+  return (
+    <div className="min-h-screen bg-[#f5f7fb] text-slate-800">
+      <aside className="fixed left-0 top-0 hidden h-screen w-64 flex-col bg-[#102a56] px-5 py-7 text-white lg:flex">
+        <a href="/" className="mb-8 block">
+          <img
+            src="/hebi-logo.png"
+            alt="Hebi Lifestyle"
+            className="h-20 w-auto brightness-0 invert"
+          />
+        </a>
+
+        <p className="mb-4 px-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-blue-200">
+          Admin Portal
+        </p>
+
+        <nav className="space-y-2">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedCase(null)
+              setActiveView('overview')
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left text-sm font-semibold text-blue-100 transition hover:bg-white/10"
+          >
+            Overview
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedCase(null)}
+            className="block w-full rounded-xl bg-white/15 px-4 py-3 text-left text-sm font-semibold text-white"
+          >
+            Cases
+          </button>
+        </nav>
+      </aside>
+
+      <main className="lg:ml-64">
+        <header className="border-b border-slate-200 bg-white px-6 py-5 sm:px-8 lg:px-10">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#174c91]">
+                Hebi Lifestyle
+              </p>
+              <h1 className="mt-1 text-xl font-semibold text-[#102a56]">
+                Case Workspace
+              </h1>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedCase(null)}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-[#102a56]"
+            >
+              ← Back to Cases
+            </button>
+          </div>
+        </header>
+
+        <div className="mx-auto max-w-7xl space-y-6 px-6 py-8 sm:px-8 lg:px-10">
+          <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm font-medium text-[#174c91]">
+                Case Record
+              </p>
+
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-[#102a56]">
+                {selectedCase.id}
+              </h2>
+
+              <p className="mt-2 text-sm text-slate-500">
+                {selectedCase.service} • {selectedCase.county}
+              </p>
+            </div>
+
+            <span
+              className={`w-fit rounded-full px-4 py-2 text-sm font-semibold ${
+                selectedCase.status === 'Active'
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : selectedCase.status === 'Available'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'bg-amber-50 text-amber-700'
+              }`}
+            >
+              {selectedCase.status}
+            </span>
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="border-b border-slate-100 pb-4">
+                  <h3 className="text-lg font-semibold text-[#102a56]">
+                    Transportation Request
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Core case and trip information.
+                  </p>
+                </div>
+
+                <div className="mt-6 grid gap-6 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Service Type
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                      {selectedCase.service}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      County
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                      {selectedCase.county}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Driver Assignment
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                      {selectedCase.driver}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Case Status
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                      {selectedCase.status}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="border-b border-slate-100 pb-4">
+                  <h3 className="text-lg font-semibold text-[#102a56]">
+                    Rider Information
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Sample rider information for the case workspace.
+                  </p>
+                </div>
+
+                <div className="mt-6 grid gap-6 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Rider
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                      Sample Rider
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Date of Birth
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                      Sample Data
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Primary Contact
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                      Sample Contact
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Special Needs
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                      None listed
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="border-b border-slate-100 pb-4">
+                  <h3 className="text-lg font-semibold text-[#102a56]">
+                    Trip Details
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Pickup, destination, timing, and coordination details.
+                  </p>
+                </div>
+
+                <div className="mt-6 grid gap-6 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Pickup
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                      Sample pickup address
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Destination
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                      Sample destination
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Trip Date
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                      To be connected
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Pickup Time
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-700">
+                      To be connected
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="rounded-2xl bg-[#102a56] p-6 text-white shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">
+                  Case Actions
+                </p>
+
+                <h3 className="mt-3 text-xl font-semibold">
+                  Manage this case
+                </h3>
+
+                <div className="mt-6 space-y-3">
+                  <button
+                    type="button"
+                    className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#102a56]"
+                  >
+                    Review Request
+                  </button>
+
+                  <button
+                    type="button"
+                    className="w-full rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white"
+                  >
+                    Assign Driver
+                  </button>
+
+                  <button
+                    type="button"
+                    className="w-full rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white"
+                  >
+                    Update Status
+                  </button>
+
+                  <button
+                    type="button"
+                    className="w-full rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white"
+                  >
+                    Add Internal Note
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-[#102a56]">
+                  Case Timeline
+                </h3>
+
+                <div className="mt-6 space-y-5">
+                  <div className="flex gap-3">
+                    <div className="mt-1 h-3 w-3 rounded-full bg-emerald-500" />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-700">
+                        Request received
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Transportation request entered into Hebi.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <div className="mt-1 h-3 w-3 rounded-full bg-blue-500" />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-700">
+                        Current status
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {selectedCase.status}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <div className="mt-1 h-3 w-3 rounded-full bg-slate-200" />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-500">
+                        Completion
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Waiting for remaining workflow steps.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+                  Development Preview
+                </p>
+                <p className="mt-2 text-sm leading-6 text-amber-800">
+                  This workspace currently uses sample information. Real rider,
+                  trip, driver, document, and billing records will be connected
+                  during the database phase.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  )
+}
 
   if (activeView === 'cases') {
     return (
@@ -207,7 +551,8 @@ export default function AdminPortal() {
 
                     <button
                       type="button"
-                      className="text-sm font-semibold text-[#174c91]"
+                      onClick={() => setSelectedCase(caseItem)}
+                      className="text-sm font-semibold text-[#174c91] hover:text-[#102a56]"
                     >
                       View Case
                     </button>
