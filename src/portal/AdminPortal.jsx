@@ -3,6 +3,8 @@ import { useState } from 'react'
 export default function AdminPortal() {
   const [activeView, setActiveView] = useState('overview')
   const [selectedCase, setSelectedCase] = useState(null)
+  const [assignDriverOpen, setAssignDriverOpen] = useState(false)
+  const [selectedDriver, setSelectedDriver] = useState('')
   const [reviewOpen, setReviewOpen] = useState(false)
   const [reviewDecision, setReviewDecision] = useState('')
   const [reviewNotes, setReviewNotes] = useState('')
@@ -35,6 +37,30 @@ export default function AdminPortal() {
       service: 'Medical Appointment',
       driver: 'Pending Approval',
       status: 'Claimed',
+    },
+  ]
+
+  const availableDrivers = [
+    {
+      id: 'DRV-1001',
+      name: 'Marcus Johnson',
+      county: 'Madison County',
+      status: 'Available',
+      vehicle: 'Honda Odyssey',
+    },
+    {
+      id: 'DRV-1002',
+      name: 'Ashley Williams',
+      county: 'Madison County',
+      status: 'Available',
+      vehicle: 'Toyota Sienna',
+    },
+    {
+      id: 'DRV-1003',
+      name: 'David Carter',
+      county: 'Morgan County',
+      status: 'Available',
+      vehicle: 'Chevrolet Traverse',
     },
   ]
 
@@ -302,6 +328,10 @@ export default function AdminPortal() {
 
                   <button
                     type="button"
+                    onClick={() => {
+                      setSelectedDriver('')
+                      setAssignDriverOpen(true)
+                    }}
                     className="w-full rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white"
                   >
                     Assign Driver
@@ -523,9 +553,178 @@ export default function AdminPortal() {
         </div>
       )}
 
+      {assignDriverOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+
+            <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5 sm:px-8">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#174c91]">
+                  Driver Assignment
+                </p>
+
+                <h2 className="mt-2 text-2xl font-semibold text-[#102a56]">
+                  Assign Driver
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  {selectedCase.id} · {selectedCase.service}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setAssignDriverOpen(false)}
+                className="rounded-lg px-3 py-2 text-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-6 px-6 py-6 sm:px-8">
+
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <h3 className="font-semibold text-[#102a56]">
+                  Case Summary
+                </h3>
+
+                <div className="mt-5 grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Case
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {selectedCase.id}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      County
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {selectedCase.county}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Service
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {selectedCase.service}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Current Assignment
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {selectedCase.driver}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-[#102a56]">
+                  Available Drivers
+                </h3>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Select the driver who should receive this transportation assignment.
+                </p>
+
+                <div className="mt-4 space-y-3">
+                  {availableDrivers.map((driver) => (
+                    <button
+                      key={driver.id}
+                      type="button"
+                      onClick={() => setSelectedDriver(driver.id)}
+                      className={`w-full rounded-2xl border p-4 text-left transition ${
+                        selectedDriver === driver.id
+                          ? 'border-[#174c91] bg-blue-50'
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-semibold text-[#102a56]">
+                            {driver.name}
+                          </p>
+
+                          <p className="mt-1 text-sm text-slate-500">
+                            {driver.county} · {driver.vehicle}
+                          </p>
+
+                          <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-600">
+                            {driver.status}
+                          </p>
+                        </div>
+
+                        <div
+                          className={`mt-1 h-5 w-5 rounded-full border-2 ${
+                            selectedDriver === driver.id
+                              ? 'border-[#174c91] bg-[#174c91]'
+                              : 'border-slate-300'
+                          }`}
+                        />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                <p className="text-sm leading-6 text-blue-800">
+                  This assignment is currently a development preview. Driver availability,
+                  schedules, counties, and case assignments will be connected to the Hebi
+                  database during the database phase.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end sm:px-8">
+
+              <button
+                type="button"
+                onClick={() => setAssignDriverOpen(false)}
+                className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={!selectedDriver}
+                onClick={() => {
+                  const driver = availableDrivers.find(
+                    (item) => item.id === selectedDriver
+                  )
+
+                  setSelectedCase({
+                    ...selectedCase,
+                    driver: driver?.name || selectedCase.driver,
+                    status: 'Active',
+                  })
+
+                  setAssignDriverOpen(false)
+                }}
+                className="rounded-xl bg-[#102a56] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#174c91] disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                Confirm Driver Assignment
+              </button>
+
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
+
 
   if (activeView === 'cases') {
     return (
