@@ -3,6 +3,9 @@ import { useState } from 'react'
 export default function AdminPortal() {
   const [activeView, setActiveView] = useState('overview')
   const [selectedCase, setSelectedCase] = useState(null)
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [reviewDecision, setReviewDecision] = useState('')
+  const [reviewNotes, setReviewNotes] = useState('')
 
   const stats = [
     { label: 'Active Cases', value: '12', detail: 'Across current service areas' },
@@ -287,7 +290,12 @@ export default function AdminPortal() {
                 <div className="mt-6 space-y-3">
                   <button
                     type="button"
-                    className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#102a56]"
+                    onClick={() => {
+                      setReviewDecision('')
+                      setReviewNotes('')
+                      setReviewOpen(true)
+                    }}
+                    className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#102a56] transition hover:bg-blue-50"
                   >
                     Review Request
                   </button>
@@ -373,6 +381,148 @@ export default function AdminPortal() {
           </section>
         </div>
       </main>
+
+      {reviewOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5 sm:px-8">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#174c91]">
+                  Case Review
+                </p>
+
+                <h2 className="mt-2 text-2xl font-semibold text-[#102a56]">
+                  Review Transportation Request
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  {selectedCase.id} · {selectedCase.service}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setReviewOpen(false)}
+                className="rounded-lg px-3 py-2 text-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-6 px-6 py-6 sm:px-8">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <h3 className="font-semibold text-[#102a56]">
+                  Request Summary
+                </h3>
+
+                <div className="mt-5 grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Case
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {selectedCase.id}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      County
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {selectedCase.county}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Service
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {selectedCase.service}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Current Status
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {selectedCase.status}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <label className="block text-sm font-semibold text-slate-700">
+                  Review Decision
+                </label>
+
+                <select
+                  value={reviewDecision}
+                  onChange={(event) => setReviewDecision(event.target.value)}
+                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+                >
+                  <option value="">Select a decision</option>
+                  <option value="Approved">Approve Request</option>
+                  <option value="Needs Information">
+                    Request More Information
+                  </option>
+                  <option value="Rejected">Reject Request</option>
+                </select>
+              </section>
+
+              <section>
+                <label className="block text-sm font-semibold text-slate-700">
+                  Review Notes
+                </label>
+
+                <textarea
+                  rows="4"
+                  value={reviewNotes}
+                  onChange={(event) => setReviewNotes(event.target.value)}
+                  placeholder="Add any internal notes about this review..."
+                  className="mt-2 w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+                />
+              </section>
+
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                <p className="text-sm leading-6 text-blue-800">
+                  This review is currently a development preview. The decision
+                  will become a permanent case record once the Hebi database is connected.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end sm:px-8">
+              <button
+                type="button"
+                onClick={() => setReviewOpen(false)}
+                className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={!reviewDecision}
+                onClick={() => {
+                  setSelectedCase({
+                    ...selectedCase,
+                    status: reviewDecision,
+                  })
+                  setReviewOpen(false)
+                }}
+                className="rounded-xl bg-[#102a56] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#174c91] disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                Save Review
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
