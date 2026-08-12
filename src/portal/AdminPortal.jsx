@@ -1,6 +1,88 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabase'
 
 export default function AdminPortal() {
+  const [session, setSession] = useState(null)
+  const [authChecking, setAuthChecking] = useState(true)
+  const [authLoading, setAuthLoading] = useState(false)
+  const [signOutLoading, setSignOutLoading] = useState(false)
+  const [authError, setAuthError] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadSession() {
+      const { data, error } = await supabase.auth.getSession()
+
+      if (!isMounted) return
+
+      if (error) {
+        setAuthError('Unable to verify the current session. Please try again.')
+      }
+
+      setSession(data.session)
+      setAuthChecking(false)
+    }
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!isMounted) return
+
+      setSession(nextSession)
+      setAuthChecking(false)
+
+      if (nextSession) {
+        setAuthError('')
+      }
+    })
+
+    loadSession()
+
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  async function handleSignIn(event) {
+    event.preventDefault()
+    setAuthLoading(true)
+    setAuthError('')
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    })
+
+    if (error) {
+      setAuthError('Incorrect email or password. Please try again.')
+    } else {
+      setPassword('')
+    }
+
+    setAuthLoading(false)
+  }
+
+  async function handleSignOut() {
+    setSignOutLoading(true)
+    setAuthError('')
+
+    const { error } = await supabase.auth.signOut()
+
+    if (error) {
+      setAuthError('Unable to sign out. Please try again.')
+      setSignOutLoading(false)
+      return
+    }
+
+    setEmail('')
+    setPassword('')
+    setSignOutLoading(false)
+  }
+
   const [activeView, setActiveView] = useState('overview')
   const [selectedCase, setSelectedCase] = useState(null)
   const [updateStatusOpen, setUpdateStatusOpen] = useState(false)
@@ -68,6 +150,119 @@ export default function AdminPortal() {
       vehicle: 'Chevrolet Traverse',
     },
   ]
+
+  if (authChecking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#102a56] px-6 text-white">
+        <div className="text-center">
+          <img
+            src="/hebi-logo.png"
+            alt="Hebi Lifestyle"
+            className="mx-auto h-24 w-auto brightness-0 invert"
+          />
+          <div className="mx-auto mt-8 h-8 w-8 animate-spin rounded-full border-2 border-blue-200 border-t-white" />
+          <p className="mt-4 text-sm text-blue-100">Loading Admin Portal...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f5f7fb] px-5 py-10">
+        <div className="grid w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl lg:grid-cols-[0.9fr_1.1fr]">
+          <section className="flex flex-col justify-between bg-[#102a56] p-8 text-white sm:p-12">
+            <img
+              src="/hebi-logo.png"
+              alt="Hebi Lifestyle"
+              className="h-24 w-auto brightness-0 invert"
+            />
+
+            <div className="mt-16">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-200">
+                Hebi Lifestyle
+              </p>
+              <h2 className="mt-4 text-3xl font-semibold">
+                Operations Management
+              </h2>
+              <p className="mt-4 max-w-sm text-sm leading-6 text-blue-100">
+                Secure administrative access for managing transportation
+                operations.
+              </p>
+            </div>
+          </section>
+
+          <section className="p-8 sm:p-12 lg:p-16">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#174c91]">
+              Secure Access
+            </p>
+            <h1 className="mt-3 text-3xl font-semibold text-[#102a56]">
+              Admin Portal
+            </h1>
+            <p className="mt-3 text-sm text-slate-500">
+              Sign in to manage Hebi Lifestyle operations.
+            </p>
+
+            <form onSubmit={handleSignIn} className="mt-8 space-y-5">
+              <div>
+                <label
+                  htmlFor="admin-email"
+                  className="block text-sm font-semibold text-slate-700"
+                >
+                  Email
+                </label>
+                <input
+                  id="admin-email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  disabled={authLoading}
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[#174c91] focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="admin-password"
+                  className="block text-sm font-semibold text-slate-700"
+                >
+                  Password
+                </label>
+                <input
+                  id="admin-password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  disabled={authLoading}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-[#174c91] focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                />
+              </div>
+
+              <div aria-live="polite" className="min-h-6">
+                {authError && (
+                  <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {authError}
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full rounded-xl bg-[#102a56] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#174c91] disabled:cursor-not-allowed disabled:bg-slate-400"
+              >
+                {authLoading ? 'Signing In...' : 'Sign In'}
+              </button>
+            </form>
+          </section>
+        </div>
+      </div>
+    )
+  }
 
   if (selectedCase) {
   return (
@@ -1360,9 +1555,20 @@ export default function AdminPortal() {
               </h1>
             </div>
 
-            <div className="text-right">
-              <p className="text-sm font-semibold text-slate-700">Welcome back</p>
-              <p className="text-xs text-slate-400">Owner / Administrator</p>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-sm font-semibold text-slate-700">Welcome back</p>
+                <p className="text-xs text-slate-400">Owner / Administrator</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={signOutLoading}
+                className="text-xs font-semibold text-slate-500 transition hover:text-[#174c91] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {signOutLoading ? 'Signing Out...' : 'Sign Out'}
+              </button>
             </div>
           </div>
         </header>
