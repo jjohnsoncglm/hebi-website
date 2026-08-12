@@ -410,6 +410,61 @@ export default function AdminPortal() {
                 </div>
               </div>
 
+              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-[#102a56]">
+                      Internal Notes
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Private notes for Hebi operations and administrative staff.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInternalNote('')
+                      setInternalNoteOpen(true)
+                    }}
+                    className="text-sm font-semibold text-[#174c91]"
+                  >
+                    + Add Note
+                  </button>
+                </div>
+
+                <div className="mt-5 space-y-4">
+                  {caseNotes.length === 0 ? (
+                    <div className="rounded-xl bg-slate-50 p-4">
+                      <p className="text-sm text-slate-500">
+                        No internal notes have been added to this case.
+                      </p>
+                    </div>
+                  ) : (
+                    caseNotes.map((note) => (
+                      <div
+                        key={note.id}
+                        className="rounded-xl border border-slate-200 p-4"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <p className="text-sm font-semibold text-[#102a56]">
+                            {note.author}
+                          </p>
+
+                          <p className="text-xs text-slate-400">
+                            {note.createdAt}
+                          </p>
+                        </div>
+
+                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                          {note.text}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
                   Development Preview
