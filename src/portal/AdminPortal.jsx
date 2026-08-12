@@ -3,6 +3,8 @@ import { useState } from 'react'
 export default function AdminPortal() {
   const [activeView, setActiveView] = useState('overview')
   const [selectedCase, setSelectedCase] = useState(null)
+  const [updateStatusOpen, setUpdateStatusOpen] = useState(false)
+  const [newStatus, setNewStatus] = useState('')
   const [assignDriverOpen, setAssignDriverOpen] = useState(false)
   const [selectedDriver, setSelectedDriver] = useState('')
   const [reviewOpen, setReviewOpen] = useState(false)
@@ -339,7 +341,11 @@ export default function AdminPortal() {
 
                   <button
                     type="button"
-                    className="w-full rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white"
+                    onClick={() => {
+                      setNewStatus(selectedCase.status)
+                      setUpdateStatusOpen(true)
+                    }}
+                    className="w-full rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
                   >
                     Update Status
                   </button>
@@ -717,6 +723,148 @@ export default function AdminPortal() {
               </button>
 
             </div>
+          </div>
+        </div>
+      )}
+
+      {updateStatusOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+          <div className="w-full max-w-xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+
+            <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5 sm:px-8">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#174c91]">
+                  Case Management
+                </p>
+
+                <h2 className="mt-2 text-2xl font-semibold text-[#102a56]">
+                  Update Case Status
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  {selectedCase.id} · {selectedCase.service}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setUpdateStatusOpen(false)}
+                className="rounded-lg px-3 py-2 text-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-6 px-6 py-6 sm:px-8">
+
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <h3 className="font-semibold text-[#102a56]">
+                  Case Summary
+                </h3>
+
+                <div className="mt-5 grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Case
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {selectedCase.id}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      County
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {selectedCase.county}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Service
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {selectedCase.service}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Current Status
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {selectedCase.status}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <label
+                  htmlFor="case-status"
+                  className="text-sm font-semibold text-[#102a56]"
+                >
+                  New Status
+                </label>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Select the new operational status for this case.
+                </p>
+
+                <select
+                  id="case-status"
+                  value={newStatus}
+                  onChange={(e) => setNewStatus(e.target.value)}
+                  className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-[#174c91] focus:ring-2 focus:ring-blue-100"
+                >
+                  <option value="">Select a status</option>
+                  <option value="Pending Review">Pending Review</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Assigned">Driver Assigned</option>
+                  <option value="Scheduled">Scheduled</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                  <option value="On Hold">On Hold</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </section>
+
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                <p className="text-sm leading-6 text-blue-800">
+                  This status update is currently a development preview. Status
+                  history and permanent case records will be connected to the Hebi
+                  database during the database phase.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end sm:px-8">
+              <button
+                type="button"
+                onClick={() => setUpdateStatusOpen(false)}
+                className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={!newStatus || newStatus === selectedCase.status}
+                onClick={() => {
+                  setSelectedCase({
+                    ...selectedCase,
+                    status: newStatus,
+                  })
+                  setUpdateStatusOpen(false)
+                }}
+                className="rounded-xl bg-[#102a56] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#174c91] disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                Save Status
+              </button>
+            </div>
+
           </div>
         </div>
       )}
