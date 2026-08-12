@@ -10,6 +10,9 @@ export default function AdminPortal() {
   const [reviewOpen, setReviewOpen] = useState(false)
   const [reviewDecision, setReviewDecision] = useState('')
   const [reviewNotes, setReviewNotes] = useState('')
+  const [internalNoteOpen, setInternalNoteOpen] = useState(false)
+  const [internalNote, setInternalNote] = useState('')
+  const [caseNotes, setCaseNotes] = useState([])
 
   const stats = [
     { label: 'Active Cases', value: '12', detail: 'Across current service areas' },
@@ -352,7 +355,11 @@ export default function AdminPortal() {
 
                   <button
                     type="button"
-                    className="w-full rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white"
+                    onClick={() => {
+                      setInternalNote('')
+                      setInternalNoteOpen(true)
+                    }}
+                    className="w-full rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
                   >
                     Add Internal Note
                   </button>
@@ -865,6 +872,138 @@ export default function AdminPortal() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {internalNoteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+          <div className="w-full max-w-xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+            
+            <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5 sm:px-8">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#174c91]">
+                  Case Management
+                </p>
+
+                <h2 className="mt-2 text-2xl font-semibold text-[#102a56]">
+                  Add Internal Note
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  {selectedCase.id} · {selectedCase.service}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setInternalNoteOpen(false)}
+                className="rounded-lg px-3 py-2 text-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-6 px-6 py-6 sm:px-8">
+              
+              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <h3 className="font-semibold text-[#102a56]">
+                  Case Summary
+                </h3>
+
+                <div className="mt-5 grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Case
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {selectedCase.id}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      County
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {selectedCase.county}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Service
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {selectedCase.service}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Current Status
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {selectedCase.status}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <label className="block text-sm font-semibold text-slate-700">
+                  Internal Note
+                </label>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Add information that should be visible to Hebi administrators and operations staff.
+                </p>
+
+                <textarea
+                  rows="6"
+                  value={internalNote}
+                  onChange={(event) => setInternalNote(event.target.value)}
+                  placeholder="Enter case note..."
+                  className="mt-3 w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+                />
+              </section>
+
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                <p className="text-sm leading-6 text-blue-800">
+                  Internal notes are intended for Hebi operations and administrative use. Notes will become permanent case history once the Hebi database is connected.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end sm:px-8">
+              <button
+                type="button"
+                onClick={() => setInternalNoteOpen(false)}
+                className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={!internalNote.trim()}
+                onClick={() => {
+                  const newNote = {
+                    id: Date.now(),
+                    text: internalNote.trim(),
+                    author: 'Administrator',
+                    createdAt: new Date().toLocaleString(),
+                  }
+
+                  setCaseNotes((previousNotes) => [newNote, ...previousNotes])
+                  setInternalNote('')
+                  setInternalNoteOpen(false)
+                }}
+                className="rounded-xl bg-[#102a56] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#174c91] disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                Save Note
+              </button>
+            </div>
           </div>
         </div>
       )}
