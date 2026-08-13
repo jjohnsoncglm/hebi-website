@@ -101,6 +101,8 @@ export default function AdminPortal() {
   const [casesLoading, setCasesLoading] = useState(true)
   const [availableDrivers, setAvailableDrivers] = useState([])
   const [driversLoading, setDriversLoading] = useState(true)
+  const [caseSearchTerm, setCaseSearchTerm] = useState('')
+  const [caseStatusFilter, setCaseStatusFilter] = useState('')
 
   useEffect(() => {
     async function loadDrivers() {
@@ -165,6 +167,33 @@ export default function AdminPortal() {
     { label: 'Drivers Working Today', value: '7', detail: 'Currently scheduled' },
     { label: 'Pending Documents', value: '3', detail: 'Need review' },
   ]
+
+  const newRequestsCount = databaseCases.filter(
+    (caseItem) => caseItem.status === 'Pending Review'
+  ).length
+  const availableCasesCount = databaseCases.filter(
+    (caseItem) => caseItem.status === 'Available'
+  ).length
+  const assignedCasesCount = databaseCases.filter(
+    (caseItem) => caseItem.status === 'Assigned' || caseItem.status === 'Active'
+  ).length
+  const completedCasesCount = databaseCases.filter(
+    (caseItem) => caseItem.status === 'Completed'
+  ).length
+
+  const filteredCases = databaseCases.filter((caseItem) => {
+    const term = caseSearchTerm.trim().toLowerCase()
+
+    const matchesSearch =
+      !term ||
+      [caseItem.case_number, caseItem.county, caseItem.service_type, caseItem.status]
+        .filter(Boolean)
+        .some((field) => field.toLowerCase().includes(term))
+
+    const matchesStatus = !caseStatusFilter || caseItem.status === caseStatusFilter
+
+    return matchesSearch && matchesStatus
+  })
 
   if (authChecking) {
     return (
@@ -1397,7 +1426,7 @@ export default function AdminPortal() {
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
                   New Requests
                 </p>
-                <p className="mt-3 text-3xl font-bold text-[#102a56]">3</p>
+                <p className="mt-3 text-3xl font-bold text-[#102a56]">{newRequestsCount}</p>
                 <p className="mt-1 text-xs text-slate-400">Awaiting review</p>
               </div>
 
@@ -1405,7 +1434,7 @@ export default function AdminPortal() {
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
                   Available
                 </p>
-                <p className="mt-3 text-3xl font-bold text-[#102a56]">4</p>
+                <p className="mt-3 text-3xl font-bold text-[#102a56]">{availableCasesCount}</p>
                 <p className="mt-1 text-xs text-slate-400">Open for driver claim</p>
               </div>
 
@@ -1413,7 +1442,7 @@ export default function AdminPortal() {
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
                   Assigned
                 </p>
-                <p className="mt-3 text-3xl font-bold text-[#102a56]">8</p>
+                <p className="mt-3 text-3xl font-bold text-[#102a56]">{assignedCasesCount}</p>
                 <p className="mt-1 text-xs text-slate-400">Driver assigned</p>
               </div>
 
@@ -1421,7 +1450,7 @@ export default function AdminPortal() {
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
                   Completed
                 </p>
-                <p className="mt-3 text-3xl font-bold text-[#102a56]">18</p>
+                <p className="mt-3 text-3xl font-bold text-[#102a56]">{completedCasesCount}</p>
                 <p className="mt-1 text-xs text-slate-400">Completed transportation</p>
               </div>
             </section>
@@ -1439,69 +1468,83 @@ export default function AdminPortal() {
                   <input
                     type="text"
                     placeholder="Search cases..."
+                    value={caseSearchTerm}
+                    onChange={(event) => setCaseSearchTerm(event.target.value)}
                     className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-[#174c91]"
                   />
 
-                  <select className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-600 outline-none">
-                    <option>All Statuses</option>
-                    <option>New Request</option>
-                    <option>Available</option>
-                    <option>Claimed</option>
-                    <option>Assigned</option>
-                    <option>Scheduled</option>
-                    <option>Completed</option>
+                  <select
+                    value={caseStatusFilter}
+                    onChange={(event) => setCaseStatusFilter(event.target.value)}
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-600 outline-none"
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="Pending Review">New Request</option>
+                    <option value="Available">Available</option>
+                    <option value="Claimed">Claimed</option>
+                    <option value="Assigned">Assigned</option>
+                    <option value="Scheduled">Scheduled</option>
+                    <option value="Completed">Completed</option>
                   </select>
                 </div>
               </div>
 
               <div className="divide-y divide-slate-100">
-                {databaseCases.map((caseItem) => (
-                  <div
-                    key={caseItem.id}
-                    className="grid gap-4 px-6 py-5 md:grid-cols-[1.1fr_1.1fr_1fr_auto_auto] md:items-center"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-[#102a56]">
-                        {caseItem.case_number}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        {caseItem.county}
-                      </p>
-                    </div>
+                {casesLoading ? (
+                  <p className="px-6 py-8 text-sm text-slate-500">Loading cases...</p>
+                ) : filteredCases.length === 0 ? (
+                  <p className="px-6 py-8 text-sm text-slate-500">
+                    No cases match your search or filter.
+                  </p>
+                ) : (
+                  filteredCases.map((caseItem) => (
+                    <div
+                      key={caseItem.id}
+                      className="grid gap-4 px-6 py-5 md:grid-cols-[1.1fr_1.1fr_1fr_auto_auto] md:items-center"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-[#102a56]">
+                          {caseItem.case_number}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {caseItem.county}
+                        </p>
+                      </div>
 
-                    <div>
-                      <p className="text-sm text-slate-700">
-                        {caseItem.service_type}
-                      </p>
-                    </div>
+                      <div>
+                        <p className="text-sm text-slate-700">
+                          {caseItem.service_type}
+                        </p>
+                      </div>
 
-                    <div>
-                      <p className="text-xs font-medium text-slate-500">
+                      <div>
+                        <p className="text-xs font-medium text-slate-500">
+                          {caseItem.status}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${
+                          caseItem.status === 'Active'
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : caseItem.status === 'Available'
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'bg-amber-50 text-amber-700'
+                        }`}
+                      >
                         {caseItem.status}
-                      </p>
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCase(caseItem)}
+                        className="text-sm font-semibold text-[#174c91] hover:text-[#102a56]"
+                      >
+                        View Case
+                      </button>
                     </div>
-
-                    <span
-                      className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${
-                        caseItem.status === 'Active'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : caseItem.status === 'Available'
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'bg-amber-50 text-amber-700'
-                      }`}
-                    >
-                      {caseItem.status}
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCase(caseItem)}
-                      className="text-sm font-semibold text-[#174c91] hover:text-[#102a56]"
-                    >
-                      View Case
-                    </button>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </section>
           </div>
