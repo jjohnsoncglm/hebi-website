@@ -104,6 +104,22 @@ export default function AdminPortal() {
   const [caseSearchTerm, setCaseSearchTerm] = useState('')
   const [caseStatusFilter, setCaseStatusFilter] = useState('')
 
+  const [createCaseOpen, setCreateCaseOpen] = useState(false)
+  const [createCaseLoading, setCreateCaseLoading] = useState(false)
+  const [createCaseError, setCreateCaseError] = useState('')
+  const [createCaseSuccess, setCreateCaseSuccess] = useState('')
+  const [riderFirstName, setRiderFirstName] = useState('')
+  const [riderLastName, setRiderLastName] = useState('')
+  const [riderPhone, setRiderPhone] = useState('')
+  const [riderEmail, setRiderEmail] = useState('')
+  const [newCaseServiceType, setNewCaseServiceType] = useState('')
+  const [newCaseCounty, setNewCaseCounty] = useState('')
+  const [referralSource, setReferralSource] = useState('')
+  const [referringAgency, setReferringAgency] = useState('')
+  const [caseWorkerName, setCaseWorkerName] = useState('')
+  const [caseWorkerEmail, setCaseWorkerEmail] = useState('')
+  const [caseWorkerPhone, setCaseWorkerPhone] = useState('')
+
   useEffect(() => {
     async function loadDrivers() {
       setDriversLoading(true)
@@ -137,29 +153,127 @@ export default function AdminPortal() {
     loadDrivers()
   }, [session])
 
-  useEffect(() => {
-    async function loadCases() {
-      setCasesLoading(true)
+  async function loadCases() {
+    setCasesLoading(true)
 
-      const { data, error } = await supabase
-        .from('cases')
-        .select('*')
-        .order('created_at', { ascending: false })
+    const { data, error } = await supabase
+      .from('cases')
+      .select('*')
+      .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error('Error loading cases:', error)
-        setCasesLoading(false)
-        return
-      }
-
-      setDatabaseCases(data || [])
+    if (error) {
+      console.error('Error loading cases:', error)
       setCasesLoading(false)
+      return
     }
 
+    setDatabaseCases(data || [])
+    setCasesLoading(false)
+  }
+
+  useEffect(() => {
     if (session) {
       loadCases()
     }
   }, [session])
+
+  async function generateCaseNumber() {
+    const year = new Date().getFullYear()
+    const prefix = `HB-${year}-`
+
+    const { data, error } = await supabase
+      .from('cases')
+      .select('case_number')
+      .ilike('case_number', `${prefix}%`)
+      .order('case_number', { ascending: false })
+      .limit(1)
+
+    let nextSequence = 1
+
+    if (!error && data && data.length > 0) {
+      const match = data[0].case_number?.match(/(\d+)$/)
+      if (match) {
+        nextSequence = parseInt(match[1], 10) + 1
+      }
+    }
+
+    return `${prefix}${String(nextSequence).padStart(4, '0')}`
+  }
+
+  function resetCreateCaseForm() {
+    setRiderFirstName('')
+    setRiderLastName('')
+    setRiderPhone('')
+    setRiderEmail('')
+    setNewCaseServiceType('')
+    setNewCaseCounty('')
+    setReferralSource('')
+    setReferringAgency('')
+    setCaseWorkerName('')
+    setCaseWorkerEmail('')
+    setCaseWorkerPhone('')
+    setCreateCaseError('')
+    setCreateCaseSuccess('')
+  }
+
+  async function handleCreateCase(event) {
+    event.preventDefault()
+
+    if (!riderFirstName.trim() || !riderLastName.trim() || !newCaseServiceType.trim() || !newCaseCounty.trim()) {
+      setCreateCaseError('Please fill in the required rider, service, and county fields.')
+      return
+    }
+
+    setCreateCaseLoading(true)
+    setCreateCaseError('')
+    setCreateCaseSuccess('')
+
+    const { data: riderData, error: riderError } = await supabase
+      .from('riders')
+      .insert({
+        first_name: riderFirstName.trim(),
+        last_name: riderLastName.trim(),
+        phone: riderPhone.trim() || null,
+        email: riderEmail.trim() || null,
+      })
+      .select()
+      .single()
+
+    if (riderError) {
+      console.error('Error creating rider:', riderError)
+      setCreateCaseError('Unable to create the rider record. Please try again.')
+      setCreateCaseLoading(false)
+      return
+    }
+
+    const caseNumber = await generateCaseNumber()
+
+    const { error: caseError } = await supabase.from('cases').insert({
+      case_number: caseNumber,
+      rider_id: riderData.id,
+      service_type: newCaseServiceType.trim(),
+      county: newCaseCounty.trim(),
+      status: 'New Request',
+      referral_source: referralSource.trim() || null,
+      referring_agency: referringAgency.trim() || null,
+      case_worker_name: caseWorkerName.trim() || null,
+      case_worker_email: caseWorkerEmail.trim() || null,
+      case_worker_phone: caseWorkerPhone.trim() || null,
+    })
+
+    if (caseError) {
+      console.error('Error creating case:', caseError)
+      setCreateCaseError('Unable to create the case. Please try again.')
+      setCreateCaseLoading(false)
+      return
+    }
+
+    await loadCases()
+
+    setCreateCaseLoading(false)
+    resetCreateCaseForm()
+    setCreateCaseSuccess(`Case ${caseNumber} was created successfully.`)
+  }
 
   const stats = [
     { label: 'Active Cases', value: '12', detail: 'Across current service areas' },
@@ -194,6 +308,233 @@ export default function AdminPortal() {
 
     return matchesSearch && matchesStatus
   })
+
+  const createCaseModal = createCaseOpen && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5 sm:px-8">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#174c91]">
+              Case Intake
+            </p>
+
+            <h2 className="mt-2 text-2xl font-semibold text-[#102a56]">
+              Create New Case
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Enter rider and referral details to open a new transportation case.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setCreateCaseOpen(false)}
+            className="rounded-lg px-3 py-2 text-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          >
+            ×
+          </button>
+        </div>
+
+        <form onSubmit={handleCreateCase}>
+          <div className="space-y-6 px-6 py-6 sm:px-8">
+            <section>
+              <h3 className="font-semibold text-[#102a56]">Rider Information</h3>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">
+                    First Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={riderFirstName}
+                    onChange={(event) => setRiderFirstName(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-[#174c91]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Last Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={riderLastName}
+                    onChange={(event) => setRiderLastName(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-[#174c91]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={riderPhone}
+                    onChange={(event) => setRiderPhone(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-[#174c91]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={riderEmail}
+                    onChange={(event) => setRiderEmail(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-[#174c91]"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-[#102a56]">Case Details</h3>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Service Type *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Non-Emergency Medical Transport"
+                    value={newCaseServiceType}
+                    onChange={(event) => setNewCaseServiceType(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-[#174c91]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">
+                    County *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newCaseCounty}
+                    onChange={(event) => setNewCaseCounty(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-[#174c91]"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-[#102a56]">Referral Information</h3>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Referral Source
+                  </label>
+                  <input
+                    type="text"
+                    value={referralSource}
+                    onChange={(event) => setReferralSource(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-[#174c91]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Referring Agency
+                  </label>
+                  <input
+                    type="text"
+                    value={referringAgency}
+                    onChange={(event) => setReferringAgency(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-[#174c91]"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <h3 className="font-semibold text-[#102a56]">Case Worker</h3>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    value={caseWorkerName}
+                    onChange={(event) => setCaseWorkerName(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-[#174c91]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={caseWorkerPhone}
+                    onChange={(event) => setCaseWorkerPhone(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-[#174c91]"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={caseWorkerEmail}
+                    onChange={(event) => setCaseWorkerEmail(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-[#174c91]"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <div aria-live="polite" className="min-h-6">
+              {createCaseError && (
+                <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {createCaseError}
+                </p>
+              )}
+
+              {createCaseSuccess && (
+                <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                  {createCaseSuccess}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end sm:px-8">
+            <button
+              type="button"
+              onClick={() => setCreateCaseOpen(false)}
+              className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              disabled={createCaseLoading}
+              className="rounded-xl bg-[#102a56] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#174c91] disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              {createCaseLoading ? 'Creating Case...' : 'Create Case'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
 
   if (authChecking) {
     return (
@@ -1399,6 +1740,10 @@ export default function AdminPortal() {
 
               <button
                 type="button"
+                onClick={() => {
+                  resetCreateCaseForm()
+                  setCreateCaseOpen(true)
+                }}
                 className="rounded-xl bg-[#102a56] px-5 py-3 text-sm font-semibold text-white"
               >
                 + Create New Case
@@ -1549,6 +1894,8 @@ export default function AdminPortal() {
             </section>
           </div>
         </main>
+
+        {createCaseModal}
       </div>
     )
   }
@@ -1696,6 +2043,10 @@ export default function AdminPortal() {
 
             <button
               type="button"
+              onClick={() => {
+                resetCreateCaseForm()
+                setCreateCaseOpen(true)
+              }}
               className="rounded-xl bg-[#102a56] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#174c91]"
             >
               + Create New Case
@@ -1841,6 +2192,8 @@ export default function AdminPortal() {
           </section>
         </div>
       </main>
+
+      {createCaseModal}
     </div>
   )
 }
