@@ -9,6 +9,7 @@ export default function AdminPortal() {
   const [authError, setAuthError] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  
 
   useEffect(() => {
     let isMounted = true
@@ -96,59 +97,73 @@ export default function AdminPortal() {
   const [internalNote, setInternalNote] = useState('')
   const [caseNotes, setCaseNotes] = useState([])
 
+  const [databaseCases, setDatabaseCases] = useState([])
+  const [casesLoading, setCasesLoading] = useState(true)
+  const [availableDrivers, setAvailableDrivers] = useState([])
+  const [driversLoading, setDriversLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadDrivers() {
+      setDriversLoading(true)
+
+      const { data, error } = await supabase
+        .from('drivers')
+        .select('*')
+        .eq('status', 'Active')
+        .order('first_name', { ascending: true })
+
+      if (error) {
+        console.error('Error loading drivers:', error)
+        setDriversLoading(false)
+        return
+      }
+
+      const formattedDrivers = (data || []).map((driver) => ({
+        id: driver.id,
+        name: `${driver.first_name || ''} ${driver.last_name || ''}`.trim(),
+        county: driver.county || '',
+        status: driver.status || '',
+        vehicle: driver.vehicle || '',
+        phone: driver.phone || '',
+        email: driver.email || '',
+      }))
+
+      setAvailableDrivers(formattedDrivers)
+      setDriversLoading(false)
+    }
+
+    loadDrivers()
+  }, [session])
+
+  useEffect(() => {
+    async function loadCases() {
+      setCasesLoading(true)
+
+      const { data, error } = await supabase
+        .from('cases')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error loading cases:', error)
+        setCasesLoading(false)
+        return
+      }
+
+      setDatabaseCases(data || [])
+      setCasesLoading(false)
+    }
+
+    if (session) {
+      loadCases()
+    }
+  }, [session])
+
   const stats = [
     { label: 'Active Cases', value: '12', detail: 'Across current service areas' },
     { label: 'Available Cases', value: '4', detail: 'Waiting for driver claim' },
     { label: 'Drivers Working Today', value: '7', detail: 'Currently scheduled' },
     { label: 'Pending Documents', value: '3', detail: 'Need review' },
-  ]
-
-  const recentCases = [
-    {
-      id: 'HB-2026-1048',
-      county: 'Madison County',
-      service: 'School Transportation',
-      driver: 'Assigned',
-      status: 'Active',
-    },
-    {
-      id: 'HB-2026-1051',
-      county: 'Madison County',
-      service: 'Family Visitation',
-      driver: 'Unassigned',
-      status: 'Available',
-    },
-    {
-      id: 'HB-2026-1054',
-      county: 'Morgan County',
-      service: 'Medical Appointment',
-      driver: 'Pending Approval',
-      status: 'Claimed',
-    },
-  ]
-
-  const availableDrivers = [
-    {
-      id: 'DRV-1001',
-      name: 'Marcus Johnson',
-      county: 'Madison County',
-      status: 'Available',
-      vehicle: 'Honda Odyssey',
-    },
-    {
-      id: 'DRV-1002',
-      name: 'Ashley Williams',
-      county: 'Madison County',
-      status: 'Available',
-      vehicle: 'Toyota Sienna',
-    },
-    {
-      id: 'DRV-1003',
-      name: 'David Carter',
-      county: 'Morgan County',
-      status: 'Available',
-      vehicle: 'Chevrolet Traverse',
-    },
   ]
 
   if (authChecking) {
@@ -961,19 +976,62 @@ export default function AdminPortal() {
               <button
                 type="button"
                 disabled={!selectedDriver}
-                onClick={() => {
-                  const driver = availableDrivers.find(
-                    (item) => item.id === selectedDriver
-                  )
+                onClick={async () => {
+                const driver = availableDrivers.find(
+                  (item) => item.id === selectedDriver
+                )
 
-                  setSelectedCase({
-                    ...selectedCase,
-                    driver: driver?.name || selectedCase.driver,
+                if (!driver || !selectedCase) return
+
+                const { error } = await supabase
+                  .from('trips')
+                  .update({
+                    driver_id: driver.id,
+                    status: 'Scheduled',
+                  })
+                  .eq('case_id', selectedCase.id)
+
+                if (error) {
+                  console.error('Error assigning driver:', error)
+                  alert('Unable to assign driver. Please try again.')
+                  return
+                }
+
+                const { error: caseError } = await supabase
+                  .from('cases')
+                  .update({
                     status: 'Active',
                   })
+                  .eq('id', selectedCase.id)
 
-                  setAssignDriverOpen(false)
-                }}
+                if (caseError) {
+                  console.error('Error updating case status:', caseError)
+                  alert('Driver was assigned, but the case status could not be updated.')
+                  return
+                }
+
+                const { error: historyError } = await supabase
+                  .from('case_status_history')
+                  .insert({
+                    case_id: selectedCase.id,
+                    previous_status: selectedCase.status,
+                    new_status: 'Active',
+                    changed_by: 'Administrator',
+                    note: `Driver ${driver.name} assigned to transportation request.`,
+                  })
+
+                if (historyError) {
+                  console.error('Error creating status history:', historyError)
+                }
+                
+                setSelectedCase({
+                  ...selectedCase,
+                  driver: driver.name,
+                  status: 'Active',
+                })
+
+                setAssignDriverOpen(false)
+              }}
                 className="rounded-xl bg-[#102a56] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#174c91] disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 Confirm Driver Assignment
@@ -1397,14 +1455,14 @@ export default function AdminPortal() {
               </div>
 
               <div className="divide-y divide-slate-100">
-                {recentCases.map((caseItem) => (
+                {databaseCases.map((caseItem) => (
                   <div
                     key={caseItem.id}
                     className="grid gap-4 px-6 py-5 md:grid-cols-[1.1fr_1.1fr_1fr_auto_auto] md:items-center"
                   >
                     <div>
                       <p className="text-sm font-semibold text-[#102a56]">
-                        {caseItem.id}
+                        {caseItem.case_number}
                       </p>
                       <p className="mt-1 text-xs text-slate-400">
                         {caseItem.county}
@@ -1413,13 +1471,13 @@ export default function AdminPortal() {
 
                     <div>
                       <p className="text-sm text-slate-700">
-                        {caseItem.service}
+                        {caseItem.service_type}
                       </p>
                     </div>
 
                     <div>
                       <p className="text-xs font-medium text-slate-500">
-                        {caseItem.driver}
+                        {caseItem.status}
                       </p>
                     </div>
 
@@ -1641,14 +1699,14 @@ export default function AdminPortal() {
               </div>
 
               <div className="divide-y divide-slate-100">
-                {recentCases.map((caseItem) => (
+                {databaseCases.map((caseItem) => (
                   <div
                     key={caseItem.id}
                     className="grid gap-3 px-6 py-5 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-center"
                   >
                     <div>
                       <p className="text-sm font-semibold text-[#102a56]">
-                        {caseItem.id}
+                        {caseItem.case_number}
                       </p>
                       <p className="mt-1 text-xs text-slate-400">
                         {caseItem.county}
@@ -1657,13 +1715,13 @@ export default function AdminPortal() {
 
                     <div>
                       <p className="text-sm text-slate-700">
-                        {caseItem.service}
+                        {caseItem.service_type}
                       </p>
                     </div>
 
                     <div>
                       <p className="text-xs font-medium text-slate-500">
-                        {caseItem.driver}
+                        {caseItem.status}
                       </p>
                     </div>
 
