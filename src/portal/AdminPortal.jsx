@@ -101,6 +101,9 @@ export default function AdminPortal() {
   const [selectedRider, setSelectedRider] = useState(null)
   const [riderLoading, setRiderLoading] = useState(false)
   const [riderLoadError, setRiderLoadError] = useState('')
+  const [caseHistory, setCaseHistory] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState('')
 
   const [databaseCases, setDatabaseCases] = useState([])
   const [casesLoading, setCasesLoading] = useState(true)
@@ -221,6 +224,49 @@ export default function AdminPortal() {
     }
   }, [selectedCase?.rider_id])
 
+  async function loadCaseHistory(caseId) {
+    if (!caseId) {
+      setCaseHistory([])
+      setHistoryError('')
+      return
+    }
+
+    setHistoryLoading(true)
+    setHistoryError('')
+
+    const { data, error } = await supabase
+      .from('case_status_history')
+      .select('*')
+      .eq('case_id', caseId)
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error('Error loading case history:', error)
+      setCaseHistory([])
+      setHistoryError('Unable to load the case timeline.')
+    } else {
+      setCaseHistory(data || [])
+    }
+
+    setHistoryLoading(false)
+  }
+
+  useEffect(() => {
+    loadCaseHistory(selectedCase?.id)
+  }, [selectedCase?.id])
+
+  function formatHistoryTimestamp(value) {
+    if (!value) return 'Not provided'
+
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return 'Not provided'
+
+    return date.toLocaleString(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    })
+  }
+
   async function generateCaseNumber() {
     const year = new Date().getFullYear()
     const prefix = `HB-${year}-`
@@ -253,10 +299,11 @@ export default function AdminPortal() {
 
     const previousStatus = selectedCase.status
 
-    const { error } = await supabase
+    const { data: updatedCases, error } = await supabase
       .from('cases')
       .update({ status: 'Approved' })
       .eq('id', selectedCase.id)
+      .select()
 
     if (error) {
       console.error('Error saving case review:', {
@@ -272,12 +319,29 @@ export default function AdminPortal() {
       return
     }
 
+    const updatedCase = updatedCases?.[0]
+
+    // An update that matches no rows returns no error, so treat it as a failure.
+    if (!updatedCase) {
+      console.error('Case review update affected no rows:', {
+        caseId: selectedCase.id,
+        caseNumber: selectedCase.case_number,
+        returnedRows: updatedCases,
+      })
+
+      setReviewError(
+        'The case status was not saved. You may not have permission to update this case.'
+      )
+      setReviewLoading(false)
+      return
+    }
+
     const { error: historyError } = await supabase
       .from('case_status_history')
       .insert({
-        case_id: selectedCase.id,
+        case_id: updatedCase.id,
         previous_status: previousStatus,
-        new_status: 'Approved',
+        new_status: updatedCase.status,
         changed_by: 'Administrator',
         note: reviewNotes.trim() || 'Transportation request approved during case review.',
       })
@@ -288,10 +352,11 @@ export default function AdminPortal() {
 
     setSelectedCase((previousCase) => ({
       ...previousCase,
-      status: 'Approved',
+      ...updatedCase,
     }))
 
     await loadCases()
+    await loadCaseHistory(updatedCase.id)
 
     setReviewLoading(false)
     setReviewOpen(false)
@@ -1132,43 +1197,41 @@ export default function AdminPortal() {
                   Case Timeline
                 </h3>
 
-                <div className="mt-6 space-y-5">
-                  <div className="flex gap-3">
-                    <div className="mt-1 h-3 w-3 rounded-full bg-emerald-500" />
-                    <div>
-                      <p className="text-sm font-semibold text-slate-700">
-                        Request received
-                      </p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        Transportation request entered into Hebi.
-                      </p>
-                    </div>
-                  </div>
+                {historyLoading ? (
+                  <p className="mt-6 text-sm text-slate-500">Loading case timeline...</p>
+                ) : historyError ? (
+                  <p className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {historyError}
+                  </p>
+                ) : caseHistory.length === 0 ? (
+                  <p className="mt-6 text-sm text-slate-500">
+                    No status history has been recorded for this case yet.
+                  </p>
+                ) : (
+                  <div className="mt-6 space-y-5">
+                    {caseHistory.map((event) => (
+                      <div key={event.id} className="flex gap-3">
+                        <div className="mt-1 h-3 w-3 rounded-full bg-blue-500" />
+                        <div>
+                          <p className="text-sm font-semibold text-slate-700">
+                            {event.previous_status
+                              ? `${event.previous_status} → ${event.new_status}`
+                              : event.new_status}
+                          </p>
 
-                  <div className="flex gap-3">
-                    <div className="mt-1 h-3 w-3 rounded-full bg-blue-500" />
-                    <div>
-                      <p className="text-sm font-semibold text-slate-700">
-                        Current status
-                      </p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        {selectedCase.status}
-                      </p>
-                    </div>
-                  </div>
+                          <p className="mt-1 text-xs text-slate-400">
+                            {event.note || 'No note provided.'}
+                          </p>
 
-                  <div className="flex gap-3">
-                    <div className="mt-1 h-3 w-3 rounded-full bg-slate-200" />
-                    <div>
-                      <p className="text-sm font-semibold text-slate-500">
-                        Completion
-                      </p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        Waiting for remaining workflow steps.
-                      </p>
-                    </div>
+                          <p className="mt-1 text-xs text-slate-400">
+                            {event.changed_by || 'Unknown'} ·{' '}
+                            {formatHistoryTimestamp(event.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                )}
               </div>
 
               <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -1571,7 +1634,9 @@ export default function AdminPortal() {
                 if (historyError) {
                   console.error('Error creating status history:', historyError)
                 }
-                
+
+                await loadCaseHistory(selectedCase.id)
+
                 setSelectedCase({
                   ...selectedCase,
                   driver: driver.name,
