@@ -240,8 +240,24 @@ export default function AdminPortal() {
       .single()
 
     if (riderError) {
-      console.error('Error creating rider:', riderError)
-      setCreateCaseError('Unable to create the rider record. Please try again.')
+      console.error('Error creating rider:', {
+        message: riderError.message,
+        code: riderError.code,
+        details: riderError.details,
+        hint: riderError.hint,
+        raw: riderError,
+      })
+
+      const errorParts = [
+        riderError.message,
+        riderError.code ? `code: ${riderError.code}` : null,
+        riderError.details ? `details: ${riderError.details}` : null,
+        riderError.hint ? `hint: ${riderError.hint}` : null,
+      ].filter(Boolean)
+
+      setCreateCaseError(
+        `Rider insert failed — ${errorParts.join(' | ') || 'unknown Supabase error'}`
+      )
       setCreateCaseLoading(false)
       return
     }
