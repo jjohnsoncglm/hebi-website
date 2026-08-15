@@ -109,6 +109,12 @@ export default function AdminPortal() {
   const [casesLoading, setCasesLoading] = useState(true)
   const [availableDrivers, setAvailableDrivers] = useState([])
   const [driversLoading, setDriversLoading] = useState(true)
+  const [driversLoadError, setDriversLoadError] = useState('')
+  const [allDrivers, setAllDrivers] = useState([])
+  const [allDriversLoading, setAllDriversLoading] = useState(true)
+  const [allDriversError, setAllDriversError] = useState('')
+  const [assignDriverLoading, setAssignDriverLoading] = useState(false)
+  const [assignDriverError, setAssignDriverError] = useState('')
   const [caseSearchTerm, setCaseSearchTerm] = useState('')
   const [caseStatusFilter, setCaseStatusFilter] = useState('')
 
@@ -131,15 +137,18 @@ export default function AdminPortal() {
   useEffect(() => {
     async function loadDrivers() {
       setDriversLoading(true)
+      setDriversLoadError('')
 
+      // public.drivers only has: id, first_name, last_name, status, phone, email, created_at, updated_at.
       const { data, error } = await supabase
         .from('drivers')
-        .select('*')
+        .select('id, first_name, last_name, status, phone, email')
         .eq('status', 'Active')
         .order('first_name', { ascending: true })
 
       if (error) {
         console.error('Error loading drivers:', error)
+        setDriversLoadError('Unable to load available drivers.')
         setDriversLoading(false)
         return
       }
@@ -147,9 +156,7 @@ export default function AdminPortal() {
       const formattedDrivers = (data || []).map((driver) => ({
         id: driver.id,
         name: `${driver.first_name || ''} ${driver.last_name || ''}`.trim(),
-        county: driver.county || '',
         status: driver.status || '',
-        vehicle: driver.vehicle || '',
         phone: driver.phone || '',
         email: driver.email || '',
       }))
@@ -160,6 +167,32 @@ export default function AdminPortal() {
 
     loadDrivers()
   }, [session])
+
+  async function loadAllDrivers() {
+    setAllDriversLoading(true)
+    setAllDriversError('')
+
+    const { data, error } = await supabase
+      .from('drivers')
+      .select('id, first_name, last_name, status, phone, email')
+      .order('first_name', { ascending: true })
+
+    if (error) {
+      console.error('Error loading driver directory:', error)
+      setAllDriversError('Unable to load drivers from the database.')
+      setAllDriversLoading(false)
+      return
+    }
+
+    setAllDrivers(data || [])
+    setAllDriversLoading(false)
+  }
+
+  useEffect(() => {
+    if (session && activeView === 'drivers') {
+      loadAllDrivers()
+    }
+  }, [session, activeView])
 
   async function loadCases() {
     setCasesLoading(true)
@@ -1240,6 +1273,7 @@ export default function AdminPortal() {
                     type="button"
                     onClick={() => {
                       setSelectedDriver('')
+                      setAssignDriverError('')
                       setAssignDriverOpen(true)
                     }}
                     className="w-full rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white"
@@ -1536,7 +1570,7 @@ export default function AdminPortal() {
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  {selectedCase.id} · {selectedCase.service}
+                  {selectedCase.case_number} · {selectedCase.service_type}
                 </p>
               </div>
 
@@ -1562,7 +1596,7 @@ export default function AdminPortal() {
                       Case
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-700">
-                      {selectedCase.id}
+                      {selectedCase.case_number}
                     </p>
                   </div>
 
@@ -1580,7 +1614,7 @@ export default function AdminPortal() {
                       Service
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-700">
-                      {selectedCase.service}
+                      {selectedCase.service_type}
                     </p>
                   </div>
 
@@ -1589,7 +1623,7 @@ export default function AdminPortal() {
                       Current Assignment
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-700">
-                      {selectedCase.driver}
+                      {selectedCase.driver || 'Not assigned'}
                     </p>
                   </div>
                 </div>
@@ -1604,52 +1638,65 @@ export default function AdminPortal() {
                   Select the driver who should receive this transportation assignment.
                 </p>
 
-                <div className="mt-4 space-y-3">
-                  {availableDrivers.map((driver) => (
-                    <button
-                      key={driver.id}
-                      type="button"
-                      onClick={() => setSelectedDriver(driver.id)}
-                      className={`w-full rounded-2xl border p-4 text-left transition ${
-                        selectedDriver === driver.id
-                          ? 'border-[#174c91] bg-blue-50'
-                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="font-semibold text-[#102a56]">
-                            {driver.name}
-                          </p>
+                {driversLoading ? (
+                  <p className="mt-4 text-sm text-slate-500">Loading drivers...</p>
+                ) : driversLoadError ? (
+                  <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {driversLoadError}
+                  </p>
+                ) : availableDrivers.length === 0 ? (
+                  <p className="mt-4 text-sm text-slate-500">
+                    No active drivers were found in the database.
+                  </p>
+                ) : (
+                  <div className="mt-4 space-y-3">
+                    {availableDrivers.map((driver) => (
+                      <button
+                        key={driver.id}
+                        type="button"
+                        onClick={() => setSelectedDriver(driver.id)}
+                        className={`w-full rounded-2xl border p-4 text-left transition ${
+                          selectedDriver === driver.id
+                            ? 'border-[#174c91] bg-blue-50'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="font-semibold text-[#102a56]">
+                              {driver.name || 'Unnamed driver'}
+                            </p>
 
-                          <p className="mt-1 text-sm text-slate-500">
-                            {driver.county} · {driver.vehicle}
-                          </p>
+                            <p className="mt-1 text-sm text-slate-500">
+                              {[driver.phone, driver.email].filter(Boolean).join(' · ') ||
+                                'No contact information on file'}
+                            </p>
 
-                          <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-600">
-                            {driver.status}
-                          </p>
+                            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-600">
+                              {driver.status}
+                            </p>
+                          </div>
+
+                          <div
+                            className={`mt-1 h-5 w-5 rounded-full border-2 ${
+                              selectedDriver === driver.id
+                                ? 'border-[#174c91] bg-[#174c91]'
+                                : 'border-slate-300'
+                            }`}
+                          />
                         </div>
-
-                        <div
-                          className={`mt-1 h-5 w-5 rounded-full border-2 ${
-                            selectedDriver === driver.id
-                              ? 'border-[#174c91] bg-[#174c91]'
-                              : 'border-slate-300'
-                          }`}
-                        />
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </section>
 
-              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                <p className="text-sm leading-6 text-blue-800">
-                  This assignment is currently a development preview. Driver availability,
-                  schedules, counties, and case assignments will be connected to the Hebi
-                  database during the database phase.
-                </p>
+              <div aria-live="polite" className="min-h-6">
+                {assignDriverError && (
+                  <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {assignDriverError}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1665,75 +1712,151 @@ export default function AdminPortal() {
 
               <button
                 type="button"
-                disabled={!selectedDriver}
+                disabled={!selectedDriver || assignDriverLoading}
                 onClick={async () => {
-                const driver = availableDrivers.find(
-                  (item) => item.id === selectedDriver
-                )
+                  const driver = availableDrivers.find(
+                    (item) => item.id === selectedDriver
+                  )
 
-                if (!driver || !selectedCase) return
+                  if (!driver || !selectedCase) return
 
-                const { error } = await supabase
-                  .from('trips')
-                  .update({
-                    driver_id: driver.id,
-                    status: 'Scheduled',
-                  })
-                  .eq('case_id', selectedCase.id)
+                  setAssignDriverLoading(true)
+                  setAssignDriverError('')
 
-                if (error) {
-                  console.error('Error assigning driver:', error)
-                  alert('Unable to assign driver. Please try again.')
-                  return
-                }
+                  // public.cases has no driver assignment column; the driver link is
+                  // stored on public.trips (case_id, driver_id). Find the existing trip
+                  // for this case, if any, since a plain update can silently match 0 rows.
+                  const { data: existingTrips, error: existingTripsError } = await supabase
+                    .from('trips')
+                    .select('id')
+                    .eq('case_id', selectedCase.id)
+                    .limit(1)
 
-                const { error: caseError } = await supabase
-                  .from('cases')
-                  .update({
-                    status: 'Active',
-                  })
-                  .eq('id', selectedCase.id)
+                  if (existingTripsError) {
+                    console.error('Error checking existing trip:', existingTripsError)
+                    setAssignDriverError(
+                      `Unable to assign driver — ${existingTripsError.message || 'unknown Supabase error'}`
+                    )
+                    setAssignDriverLoading(false)
+                    return
+                  }
 
-                if (caseError) {
-                  console.error('Error updating case status:', caseError)
-                  alert('Driver was assigned, but the case status could not be updated.')
-                  return
-                }
+                  const existingTrip = existingTrips?.[0]
 
-                const { error: historyError } = await supabase
-                  .from('case_status_history')
-                  .insert({
-                    case_id: selectedCase.id,
-                    previous_status: selectedCase.status,
-                    new_status: 'Active',
-                    changed_by: 'Administrator',
-                    note: `Driver ${driver.name} assigned to transportation request.`,
-                  })
+                  const { error: tripWriteError } = existingTrip
+                    ? await supabase
+                        .from('trips')
+                        .update({ driver_id: driver.id, status: 'Scheduled' })
+                        .eq('id', existingTrip.id)
+                    : await supabase
+                        .from('trips')
+                        .insert({ case_id: selectedCase.id, driver_id: driver.id, status: 'Scheduled' })
 
-                if (historyError) {
-                  console.error('Error creating status history:', historyError)
-                }
+                  if (tripWriteError) {
+                    console.error('Error assigning driver:', {
+                      message: tripWriteError.message,
+                      code: tripWriteError.code,
+                      details: tripWriteError.details,
+                      hint: tripWriteError.hint,
+                      raw: tripWriteError,
+                    })
 
-                await loadCases()
-                await loadCaseHistory(selectedCase.id)
+                    const tripErrorParts = [
+                      tripWriteError.message,
+                      tripWriteError.code ? `code: ${tripWriteError.code}` : null,
+                      tripWriteError.details ? `details: ${tripWriteError.details}` : null,
+                      tripWriteError.hint ? `hint: ${tripWriteError.hint}` : null,
+                    ].filter(Boolean)
 
-                setSelectedCase({
-                  ...selectedCase,
-                  driver: driver.name,
-                  status: 'Active',
-                })
+                    setAssignDriverError(
+                      `Unable to assign driver — ${
+                        tripErrorParts.join(' | ') || 'unknown Supabase error'
+                      }`
+                    )
+                    setAssignDriverLoading(false)
+                    return
+                  }
 
-                setAssignDriverOpen(false)
-              }}
+                  const previousStatus = selectedCase.status
+
+                  const { data: updatedCases, error: caseError } = await supabase
+                    .from('cases')
+                    .update({ status: 'Assigned' })
+                    .eq('id', selectedCase.id)
+                    .select()
+
+                  if (caseError) {
+                    console.error('Error updating case status:', caseError)
+                    setAssignDriverError(
+                      'Driver was assigned, but the case status could not be updated.'
+                    )
+                    setAssignDriverLoading(false)
+                    return
+                  }
+
+                  const updatedCase = updatedCases?.[0]
+
+                  if (!updatedCase) {
+                    console.error('Case status update affected no rows:', {
+                      caseId: selectedCase.id,
+                    })
+                    setAssignDriverError(
+                      'Driver was assigned, but the case status was not saved. You may not have permission to update this case.'
+                    )
+                    setAssignDriverLoading(false)
+                    return
+                  }
+
+                  const { error: historyError } = await supabase
+                    .from('case_status_history')
+                    .insert({
+                      case_id: updatedCase.id,
+                      previous_status: previousStatus,
+                      new_status: updatedCase.status,
+                      changed_by: 'Administrator',
+                      note: `Driver ${driver.name} assigned to transportation request.`,
+                    })
+
+                  await loadCases()
+                  await loadCaseHistory(updatedCase.id)
+
+                  setSelectedCase((previousCase) => ({
+                    ...previousCase,
+                    ...updatedCase,
+                    driver: driver.name,
+                  }))
+
+                  if (historyError) {
+                    console.error('Error creating status history:', historyError)
+
+                    const historyErrorParts = [
+                      historyError.message,
+                      historyError.code ? `code: ${historyError.code}` : null,
+                      historyError.details ? `details: ${historyError.details}` : null,
+                      historyError.hint ? `hint: ${historyError.hint}` : null,
+                    ].filter(Boolean)
+
+                    setHistoryError(
+                      `The driver was assigned, but the timeline entry failed to save — ${
+                        historyErrorParts.join(' | ') || 'unknown Supabase error'
+                      }`
+                    )
+                  }
+
+                  setAssignDriverLoading(false)
+                  setAssignDriverError('')
+                  setAssignDriverOpen(false)
+                }}
                 className="rounded-xl bg-[#102a56] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#174c91] disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                Confirm Driver Assignment
+                {assignDriverLoading ? 'Assigning Driver...' : 'Confirm Driver Assignment'}
               </button>
 
             </div>
           </div>
         </div>
       )}
+
 
       {updateStatusOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
@@ -2222,7 +2345,139 @@ export default function AdminPortal() {
       </div>
     )
   }
-  
+
+  if (activeView === 'drivers') {
+    return (
+      <div className="min-h-screen bg-[#f5f7fb] text-slate-800">
+        <aside className="fixed left-0 top-0 hidden h-screen w-64 flex-col bg-[#102a56] px-5 py-7 text-white lg:flex">
+          <a href="/" className="mb-8 block">
+            <img
+              src="/hebi-logo.png"
+              alt="Hebi Lifestyle"
+              className="h-20 w-auto brightness-0 invert"
+            />
+          </a>
+
+          <p className="mb-4 px-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-blue-200">
+            Admin Portal
+          </p>
+
+          <nav className="space-y-2">
+            <button
+              type="button"
+              onClick={() => setActiveView('overview')}
+              className="block w-full rounded-xl px-4 py-3 text-left text-sm font-semibold text-blue-100 transition hover:bg-white/10"
+            >
+              Overview
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveView('cases')}
+              className="block w-full rounded-xl px-4 py-3 text-left text-sm font-semibold text-blue-100 transition hover:bg-white/10"
+            >
+              Cases
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveView('drivers')}
+              className="block w-full rounded-xl bg-white/15 px-4 py-3 text-left text-sm font-semibold text-white"
+            >
+              Drivers
+            </button>
+          </nav>
+        </aside>
+
+        <main className="lg:ml-64">
+          <header className="border-b border-slate-200 bg-white px-6 py-5 sm:px-8 lg:px-10">
+            <div className="mx-auto flex max-w-7xl items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#174c91]">
+                  Hebi Lifestyle
+                </p>
+                <h1 className="mt-1 text-xl font-semibold text-[#102a56]">
+                  Driver Management
+                </h1>
+              </div>
+            </div>
+          </header>
+
+          <div className="mx-auto max-w-7xl space-y-6 px-6 py-8 sm:px-8 lg:px-10">
+            <section>
+              <p className="text-sm font-medium text-[#174c91]">
+                Operations
+              </p>
+
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-[#102a56]">
+                Drivers
+              </h2>
+
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
+                Driver directory sourced directly from the Hebi database.
+              </p>
+            </section>
+
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-100 px-6 py-5">
+                <h3 className="font-semibold text-[#102a56]">All Drivers</h3>
+                <p className="mt-1 text-xs text-slate-400">
+                  Current driver records
+                </p>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {allDriversLoading ? (
+                  <p className="px-6 py-8 text-sm text-slate-500">Loading drivers...</p>
+                ) : allDriversError ? (
+                  <p className="px-6 py-8 text-sm text-red-700">{allDriversError}</p>
+                ) : allDrivers.length === 0 ? (
+                  <p className="px-6 py-8 text-sm text-slate-500">
+                    No drivers were found in the database.
+                  </p>
+                ) : (
+                  allDrivers.map((driver) => (
+                    <div
+                      key={driver.id}
+                      className="grid gap-4 px-6 py-5 md:grid-cols-[1.2fr_1fr_auto] md:items-center"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-[#102a56]">
+                          {`${driver.first_name || ''} ${driver.last_name || ''}`.trim() ||
+                            'Unnamed driver'}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {[driver.phone, driver.email].filter(Boolean).join(' · ') ||
+                            'No contact information on file'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-medium text-slate-500">
+                          {driver.status || 'Not provided'}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${
+                          driver.status === 'Active'
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        {driver.status || 'Unknown'}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#f5f7fb] text-slate-800">
       <aside className="fixed left-0 top-0 hidden h-screen w-64 flex-col bg-[#102a56] px-5 py-7 text-white lg:flex">
@@ -2270,12 +2525,17 @@ export default function AdminPortal() {
             Schedule
           </a>
 
-          <a
-            href="#drivers"
-            className="block rounded-xl px-4 py-3 text-sm text-blue-100 transition hover:bg-white/10"
+          <button
+            type="button"
+            onClick={() => setActiveView('drivers')}
+            className={`block w-full rounded-xl px-4 py-3 text-left text-sm font-semibold transition ${
+              activeView === 'drivers'
+                ? 'bg-white/15 text-white'
+                : 'text-blue-100 hover:bg-white/10'
+            }`}
           >
             Drivers
-          </a>
+          </button>
 
           <a
             href="#documents"
