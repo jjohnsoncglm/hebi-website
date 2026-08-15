@@ -233,8 +233,8 @@ export default function AdminPortal() {
       .insert({
         first_name: riderFirstName.trim(),
         last_name: riderLastName.trim(),
-        phone: riderPhone.trim() || null,
-        email: riderEmail.trim() || null,
+        primary_contact_phone: riderPhone.trim() || null,
+        primary_contact_email: riderEmail.trim() || null,
       })
       .select()
       .single()
