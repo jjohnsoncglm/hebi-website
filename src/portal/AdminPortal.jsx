@@ -336,19 +336,29 @@ export default function AdminPortal() {
       return
     }
 
+    // Confirm an authenticated session is still present before the history insert,
+    // since RLS on case_status_history requires the authenticated role.
+    const { data: historySessionData, error: historySessionError } = await supabase.auth.getSession()
+    const activeHistorySession = historySessionData?.session ?? null
+
+    console.log('Case review history insert auth check:', {
+      hasSession: Boolean(activeHistorySession),
+      userId: activeHistorySession?.user?.id ?? null,
+      userRole: activeHistorySession?.user?.role ?? null,
+      historySessionError,
+    })
+
+    const historyRow = {
+      case_id: updatedCase.id,
+      previous_status: previousStatus,
+      new_status: updatedCase.status,
+      changed_by: 'Administrator',
+      note: reviewNotes.trim() || 'Transportation request approved during case review.',
+    }
+
     const { error: historyError } = await supabase
       .from('case_status_history')
-      .insert({
-        case_id: updatedCase.id,
-        previous_status: previousStatus,
-        new_status: updatedCase.status,
-        changed_by: 'Administrator',
-        note: reviewNotes.trim() || 'Transportation request approved during case review.',
-      })
-
-    if (historyError) {
-      console.error('Error creating status history:', historyError)
-    }
+      .insert(historyRow)
 
     setSelectedCase((previousCase) => ({
       ...previousCase,
@@ -357,6 +367,31 @@ export default function AdminPortal() {
 
     await loadCases()
     await loadCaseHistory(updatedCase.id)
+
+    if (historyError) {
+      console.error('Error creating status history:', {
+        message: historyError.message,
+        code: historyError.code,
+        details: historyError.details,
+        hint: historyError.hint,
+        raw: historyError,
+        attemptedRow: historyRow,
+        hadSession: Boolean(activeHistorySession),
+      })
+
+      const historyErrorParts = [
+        historyError.message,
+        historyError.code ? `code: ${historyError.code}` : null,
+        historyError.details ? `details: ${historyError.details}` : null,
+        historyError.hint ? `hint: ${historyError.hint}` : null,
+      ].filter(Boolean)
+
+      setHistoryError(
+        `The case was approved, but the timeline entry failed to save — ${
+          historyErrorParts.join(' | ') || 'unknown Supabase error'
+        }`
+      )
+    }
 
     setReviewLoading(false)
     setReviewOpen(false)
