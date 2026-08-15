@@ -228,6 +228,27 @@ export default function AdminPortal() {
     setCreateCaseError('')
     setCreateCaseSuccess('')
 
+    // Temporary diagnostics: confirm which Supabase identity the insert runs as.
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    const activeSession = sessionData?.session ?? null
+
+    console.log('Create Case auth check:', {
+      hasSession: Boolean(activeSession),
+      userId: activeSession?.user?.id ?? null,
+      userEmail: activeSession?.user?.email ?? null,
+      userRole: activeSession?.user?.role ?? null,
+      appMetadataRole: activeSession?.user?.app_metadata?.role ?? null,
+      sessionError,
+    })
+
+    if (!activeSession) {
+      setCreateCaseError(
+        'Your admin session is not authenticated with Supabase. Please sign out and sign back in.'
+      )
+      setCreateCaseLoading(false)
+      return
+    }
+
     const { data: riderData, error: riderError } = await supabase
       .from('riders')
       .insert({
