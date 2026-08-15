@@ -1786,9 +1786,27 @@ export default function AdminPortal() {
                     .select()
 
                   if (caseError) {
-                    console.error('Error updating case status:', caseError)
+                    console.error('Error updating case status after driver assignment:', {
+                      message: caseError.message,
+                      code: caseError.code,
+                      details: caseError.details,
+                      hint: caseError.hint,
+                      raw: caseError,
+                      attemptedStatus: 'Assigned',
+                      caseId: selectedCase.id,
+                    })
+
+                    const caseStatusErrorParts = [
+                      caseError.message,
+                      caseError.code ? `code: ${caseError.code}` : null,
+                      caseError.details ? `details: ${caseError.details}` : null,
+                      caseError.hint ? `hint: ${caseError.hint}` : null,
+                    ].filter(Boolean)
+
                     setAssignDriverError(
-                      'Driver was assigned, but the case status could not be updated.'
+                      `Driver was assigned, but the case status could not be updated — ${
+                        caseStatusErrorParts.join(' | ') || 'unknown Supabase error'
+                      }`
                     )
                     setAssignDriverLoading(false)
                     return
