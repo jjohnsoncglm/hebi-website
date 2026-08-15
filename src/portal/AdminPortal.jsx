@@ -290,7 +290,6 @@ export default function AdminPortal() {
       rider_id: riderData.id,
       service_type: newCaseServiceType.trim(),
       county: newCaseCounty.trim(),
-      status: 'New Request',
       referral_source: referralSource.trim() || null,
       referring_agency: referringAgency.trim() || null,
       case_worker_name: caseWorkerName.trim() || null,
