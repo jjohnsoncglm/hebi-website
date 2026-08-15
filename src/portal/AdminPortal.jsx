@@ -96,6 +96,9 @@ export default function AdminPortal() {
   const [internalNoteOpen, setInternalNoteOpen] = useState(false)
   const [internalNote, setInternalNote] = useState('')
   const [caseNotes, setCaseNotes] = useState([])
+  const [selectedRider, setSelectedRider] = useState(null)
+  const [riderLoading, setRiderLoading] = useState(false)
+  const [riderLoadError, setRiderLoadError] = useState('')
 
   const [databaseCases, setDatabaseCases] = useState([])
   const [casesLoading, setCasesLoading] = useState(true)
@@ -176,6 +179,45 @@ export default function AdminPortal() {
       loadCases()
     }
   }, [session])
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadRider() {
+      if (!selectedCase?.rider_id) {
+        setSelectedRider(null)
+        setRiderLoadError('')
+        return
+      }
+
+      setRiderLoading(true)
+      setRiderLoadError('')
+
+      const { data, error } = await supabase
+        .from('riders')
+        .select('*')
+        .eq('id', selectedCase.rider_id)
+        .maybeSingle()
+
+      if (!isMounted) return
+
+      if (error) {
+        console.error('Error loading rider:', error)
+        setSelectedRider(null)
+        setRiderLoadError('Unable to load the rider record for this case.')
+      } else {
+        setSelectedRider(data)
+      }
+
+      setRiderLoading(false)
+    }
+
+    loadRider()
+
+    return () => {
+      isMounted = false
+    }
+  }, [selectedCase?.rider_id])
 
   async function generateCaseNumber() {
     const year = new Date().getFullYear()
@@ -769,11 +811,12 @@ export default function AdminPortal() {
               </p>
 
               <h2 className="mt-2 text-3xl font-semibold tracking-tight text-[#102a56]">
-                {selectedCase.id}
+                {selectedCase.case_number || 'Not provided'}
               </h2>
 
               <p className="mt-2 text-sm text-slate-500">
-                {selectedCase.service} • {selectedCase.county}
+                {selectedCase.service_type || 'Not provided'} •{' '}
+                {selectedCase.county || 'Not provided'}
               </p>
             </div>
 
@@ -808,7 +851,7 @@ export default function AdminPortal() {
                       Service Type
                     </p>
                     <p className="mt-2 text-sm font-semibold text-slate-700">
-                      {selectedCase.service}
+                      {selectedCase.service_type || 'Not provided'}
                     </p>
                   </div>
 
@@ -817,7 +860,7 @@ export default function AdminPortal() {
                       County
                     </p>
                     <p className="mt-2 text-sm font-semibold text-slate-700">
-                      {selectedCase.county}
+                      {selectedCase.county || 'Not provided'}
                     </p>
                   </div>
 
@@ -826,7 +869,7 @@ export default function AdminPortal() {
                       Driver Assignment
                     </p>
                     <p className="mt-2 text-sm font-semibold text-slate-700">
-                      {selectedCase.driver}
+                      {selectedCase.driver || 'Not assigned'}
                     </p>
                   </div>
 
@@ -835,7 +878,7 @@ export default function AdminPortal() {
                       Case Status
                     </p>
                     <p className="mt-2 text-sm font-semibold text-slate-700">
-                      {selectedCase.status}
+                      {selectedCase.status || 'Not provided'}
                     </p>
                   </div>
                 </div>
@@ -847,47 +890,78 @@ export default function AdminPortal() {
                     Rider Information
                   </h3>
                   <p className="mt-1 text-sm text-slate-500">
-                    Sample rider information for the case workspace.
+                    Rider record linked to this transportation case.
                   </p>
                 </div>
 
-                <div className="mt-6 grid gap-6 sm:grid-cols-2">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-                      Rider
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-slate-700">
-                      Sample Rider
-                    </p>
-                  </div>
+                {riderLoading ? (
+                  <p className="mt-6 text-sm text-slate-500">Loading rider information...</p>
+                ) : riderLoadError ? (
+                  <p className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {riderLoadError}
+                  </p>
+                ) : !selectedRider ? (
+                  <p className="mt-6 text-sm text-slate-500">
+                    No rider record is linked to this case.
+                  </p>
+                ) : (
+                  <div className="mt-6 grid gap-6 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                        Rider
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-slate-700">
+                        {`${selectedRider.first_name || ''} ${selectedRider.last_name || ''}`.trim() ||
+                          'Not provided'}
+                      </p>
+                    </div>
 
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-                      Date of Birth
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-slate-700">
-                      Sample Data
-                    </p>
-                  </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                        Date of Birth
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-slate-700">
+                        {selectedRider.date_of_birth || 'Not provided'}
+                      </p>
+                    </div>
 
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-                      Primary Contact
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-slate-700">
-                      Sample Contact
-                    </p>
-                  </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                        Primary Contact
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-slate-700">
+                        {selectedRider.primary_contact_name || 'Not provided'}
+                      </p>
+                    </div>
 
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-                      Special Needs
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-slate-700">
-                      None listed
-                    </p>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                        Contact Phone
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-slate-700">
+                        {selectedRider.primary_contact_phone || 'Not provided'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                        Contact Email
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-slate-700">
+                        {selectedRider.primary_contact_email || 'Not provided'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                        Special Needs
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-slate-700">
+                        {selectedRider.special_needs || 'Not provided'}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -906,7 +980,7 @@ export default function AdminPortal() {
                       Pickup
                     </p>
                     <p className="mt-2 text-sm font-semibold text-slate-700">
-                      Sample pickup address
+                      Not provided
                     </p>
                   </div>
 
@@ -915,7 +989,7 @@ export default function AdminPortal() {
                       Destination
                     </p>
                     <p className="mt-2 text-sm font-semibold text-slate-700">
-                      Sample destination
+                      Not provided
                     </p>
                   </div>
 
@@ -924,7 +998,7 @@ export default function AdminPortal() {
                       Trip Date
                     </p>
                     <p className="mt-2 text-sm font-semibold text-slate-700">
-                      To be connected
+                      Not scheduled
                     </p>
                   </div>
 
@@ -933,7 +1007,7 @@ export default function AdminPortal() {
                       Pickup Time
                     </p>
                     <p className="mt-2 text-sm font-semibold text-slate-700">
-                      To be connected
+                      Not scheduled
                     </p>
                   </div>
                 </div>
@@ -1102,9 +1176,9 @@ export default function AdminPortal() {
                   Development Preview
                 </p>
                 <p className="mt-2 text-sm leading-6 text-amber-800">
-                  This workspace currently uses sample information. Real rider,
-                  trip, driver, document, and billing records will be connected
-                  during the database phase.
+                  Case and rider records are now connected to the Hebi database.
+                  Trip, driver, document, and billing records will be connected in
+                  upcoming steps.
                 </p>
               </div>
             </div>
