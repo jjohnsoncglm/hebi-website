@@ -93,6 +93,8 @@ export default function AdminPortal() {
   const [reviewOpen, setReviewOpen] = useState(false)
   const [reviewDecision, setReviewDecision] = useState('')
   const [reviewNotes, setReviewNotes] = useState('')
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [reviewError, setReviewError] = useState('')
   const [internalNoteOpen, setInternalNoteOpen] = useState(false)
   const [internalNote, setInternalNote] = useState('')
   const [caseNotes, setCaseNotes] = useState([])
@@ -242,8 +244,60 @@ export default function AdminPortal() {
     return `${prefix}${String(nextSequence).padStart(4, '0')}`
   }
 
-  function resetCreateCaseForm() {
-    setRiderFirstName('')
+  async function handleSaveReview() {
+    // This phase only supports the Pending Review -> Approved transition.
+    if (!selectedCase || reviewDecision !== 'Approved') return
+
+    setReviewLoading(true)
+    setReviewError('')
+
+    const previousStatus = selectedCase.status
+
+    const { error } = await supabase
+      .from('cases')
+      .update({ status: 'Approved' })
+      .eq('id', selectedCase.id)
+
+    if (error) {
+      console.error('Error saving case review:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        raw: error,
+      })
+
+      setReviewError('Unable to save this review. Please try again.')
+      setReviewLoading(false)
+      return
+    }
+
+    const { error: historyError } = await supabase
+      .from('case_status_history')
+      .insert({
+        case_id: selectedCase.id,
+        previous_status: previousStatus,
+        new_status: 'Approved',
+        changed_by: 'Administrator',
+        note: reviewNotes.trim() || 'Transportation request approved during case review.',
+      })
+
+    if (historyError) {
+      console.error('Error creating status history:', historyError)
+    }
+
+    setSelectedCase((previousCase) => ({
+      ...previousCase,
+      status: 'Approved',
+    }))
+
+    await loadCases()
+
+    setReviewLoading(false)
+    setReviewOpen(false)
+  }
+
+  function resetCreateCaseForm() {    setRiderFirstName('')
     setRiderLastName('')
     setRiderPhone('')
     setRiderEmail('')
@@ -1030,6 +1084,7 @@ export default function AdminPortal() {
                     onClick={() => {
                       setReviewDecision('')
                       setReviewNotes('')
+                      setReviewError('')
                       setReviewOpen(true)
                     }}
                     className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#102a56] transition hover:bg-blue-50"
@@ -1200,7 +1255,7 @@ export default function AdminPortal() {
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  {selectedCase.id} · {selectedCase.service}
+                  {selectedCase.case_number} · {selectedCase.service_type}
                 </p>
               </div>
 
@@ -1225,7 +1280,7 @@ export default function AdminPortal() {
                       Case
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-700">
-                      {selectedCase.id}
+                      {selectedCase.case_number}
                     </p>
                   </div>
 
@@ -1243,7 +1298,7 @@ export default function AdminPortal() {
                       Service
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-700">
-                      {selectedCase.service}
+                      {selectedCase.service_type}
                     </p>
                   </div>
 
@@ -1270,10 +1325,12 @@ export default function AdminPortal() {
                 >
                   <option value="">Select a decision</option>
                   <option value="Approved">Approve Request</option>
-                  <option value="Needs Information">
-                    Request More Information
+                  <option value="" disabled>
+                    Request More Information (coming soon)
                   </option>
-                  <option value="Rejected">Reject Request</option>
+                  <option value="" disabled>
+                    Reject Request (coming soon)
+                  </option>
                 </select>
               </section>
 
@@ -1291,11 +1348,12 @@ export default function AdminPortal() {
                 />
               </section>
 
-              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                <p className="text-sm leading-6 text-blue-800">
-                  This review is currently a development preview. The decision
-                  will become a permanent case record once the Hebi database is connected.
-                </p>
+              <div aria-live="polite" className="min-h-6">
+                {reviewError && (
+                  <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {reviewError}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1310,17 +1368,11 @@ export default function AdminPortal() {
 
               <button
                 type="button"
-                disabled={!reviewDecision}
-                onClick={() => {
-                  setSelectedCase({
-                    ...selectedCase,
-                    status: reviewDecision,
-                  })
-                  setReviewOpen(false)
-                }}
+                disabled={!reviewDecision || reviewLoading}
+                onClick={handleSaveReview}
                 className="rounded-xl bg-[#102a56] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#174c91] disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                Save Review
+                {reviewLoading ? 'Saving Review...' : 'Save Review'}
               </button>
             </div>
           </div>
