@@ -101,6 +101,7 @@ export default function AdminPortal() {
   const [selectedRider, setSelectedRider] = useState(null)
   const [riderLoading, setRiderLoading] = useState(false)
   const [riderLoadError, setRiderLoadError] = useState('')
+  const [assignedDriverName, setAssignedDriverName] = useState('')
   const [caseHistory, setCaseHistory] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState('')
@@ -266,6 +267,54 @@ export default function AdminPortal() {
       isMounted = false
     }
   }, [selectedCase?.rider_id])
+
+  // The driver link lives on public.trips, so resolve the assigned driver name
+  // for the case workspace from trips.driver_id.
+  async function loadAssignedDriver(caseId) {
+    if (!caseId) {
+      setAssignedDriverName('')
+      return
+    }
+
+    const { data: trips, error: tripsError } = await supabase
+      .from('trips')
+      .select('driver_id')
+      .eq('case_id', caseId)
+      .limit(1)
+
+    if (tripsError) {
+      console.error('Error loading assigned driver trip:', tripsError)
+      setAssignedDriverName('')
+      return
+    }
+
+    const driverId = trips?.[0]?.driver_id
+
+    if (!driverId) {
+      setAssignedDriverName('')
+      return
+    }
+
+    const { data: driver, error: driverError } = await supabase
+      .from('drivers')
+      .select('first_name, last_name')
+      .eq('id', driverId)
+      .maybeSingle()
+
+    if (driverError) {
+      console.error('Error loading assigned driver:', driverError)
+      setAssignedDriverName('')
+      return
+    }
+
+    setAssignedDriverName(
+      `${driver?.first_name || ''} ${driver?.last_name || ''}`.trim()
+    )
+  }
+
+  useEffect(() => {
+    loadAssignedDriver(selectedCase?.id)
+  }, [selectedCase?.id])
 
   async function loadCaseHistory(caseId) {
     if (!caseId) {
@@ -1100,7 +1149,7 @@ export default function AdminPortal() {
                       Driver Assignment
                     </p>
                     <p className="mt-2 text-sm font-semibold text-slate-700">
-                      {selectedCase.driver || 'Not assigned'}
+                      {assignedDriverName || 'Not assigned'}
                     </p>
                   </div>
 
@@ -1623,7 +1672,7 @@ export default function AdminPortal() {
                       Current Assignment
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-700">
-                      {selectedCase.driver || 'Not assigned'}
+                      {assignedDriverName || 'Not assigned'}
                     </p>
                   </div>
                 </div>
@@ -1777,72 +1826,25 @@ export default function AdminPortal() {
                     return
                   }
 
-                  const previousStatus = selectedCase.status
-
-                  const { data: updatedCases, error: caseError } = await supabase
-                    .from('cases')
-                    .update({ status: 'Assigned' })
-                    .eq('id', selectedCase.id)
-                    .select()
-
-                  if (caseError) {
-                    console.error('Error updating case status after driver assignment:', {
-                      message: caseError.message,
-                      code: caseError.code,
-                      details: caseError.details,
-                      hint: caseError.hint,
-                      raw: caseError,
-                      attemptedStatus: 'Assigned',
-                      caseId: selectedCase.id,
-                    })
-
-                    const caseStatusErrorParts = [
-                      caseError.message,
-                      caseError.code ? `code: ${caseError.code}` : null,
-                      caseError.details ? `details: ${caseError.details}` : null,
-                      caseError.hint ? `hint: ${caseError.hint}` : null,
-                    ].filter(Boolean)
-
-                    setAssignDriverError(
-                      `Driver was assigned, but the case status could not be updated — ${
-                        caseStatusErrorParts.join(' | ') || 'unknown Supabase error'
-                      }`
-                    )
-                    setAssignDriverLoading(false)
-                    return
-                  }
-
-                  const updatedCase = updatedCases?.[0]
-
-                  if (!updatedCase) {
-                    console.error('Case status update affected no rows:', {
-                      caseId: selectedCase.id,
-                    })
-                    setAssignDriverError(
-                      'Driver was assigned, but the case status was not saved. You may not have permission to update this case.'
-                    )
-                    setAssignDriverLoading(false)
-                    return
-                  }
+                  // cases_status_check does not allow an "Assigned" status, so the
+                  // case status is left unchanged and only the trip records the driver.
+                  const currentStatus = selectedCase.status
 
                   const { error: historyError } = await supabase
                     .from('case_status_history')
                     .insert({
-                      case_id: updatedCase.id,
-                      previous_status: previousStatus,
-                      new_status: updatedCase.status,
+                      case_id: selectedCase.id,
+                      previous_status: currentStatus,
+                      new_status: currentStatus,
                       changed_by: 'Administrator',
-                      note: `Driver ${driver.name} assigned to transportation request.`,
+                      note: `Driver assigned: ${driver.name}`,
                     })
 
                   await loadCases()
-                  await loadCaseHistory(updatedCase.id)
+                  await loadCaseHistory(selectedCase.id)
+                  await loadAssignedDriver(selectedCase.id)
 
-                  setSelectedCase((previousCase) => ({
-                    ...previousCase,
-                    ...updatedCase,
-                    driver: driver.name,
-                  }))
+                  setAssignedDriverName(driver.name)
 
                   if (historyError) {
                     console.error('Error creating status history:', historyError)
