@@ -299,8 +299,24 @@ export default function AdminPortal() {
     })
 
     if (caseError) {
-      console.error('Error creating case:', caseError)
-      setCreateCaseError('Unable to create the case. Please try again.')
+      console.error('Error creating case:', {
+        message: caseError.message,
+        code: caseError.code,
+        details: caseError.details,
+        hint: caseError.hint,
+        raw: caseError,
+      })
+
+      const caseErrorParts = [
+        caseError.message,
+        caseError.code ? `code: ${caseError.code}` : null,
+        caseError.details ? `details: ${caseError.details}` : null,
+        caseError.hint ? `hint: ${caseError.hint}` : null,
+      ].filter(Boolean)
+
+      setCreateCaseError(
+        `Case insert failed — ${caseErrorParts.join(' | ') || 'unknown Supabase error'}`
+      )
       setCreateCaseLoading(false)
       return
     }
