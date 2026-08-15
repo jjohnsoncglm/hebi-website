@@ -185,6 +185,16 @@ export default function AdminPortal() {
     }
   }, [session])
 
+  // Refresh cases from Supabase whenever leaving the case workspace, so the
+  // list reflects the latest status instead of a stale pre-fetch.
+  function closeCaseWorkspace(nextView) {
+    setSelectedCase(null)
+    if (nextView) {
+      setActiveView(nextView)
+    }
+    loadCases()
+  }
+
   useEffect(() => {
     let isMounted = true
 
@@ -234,17 +244,54 @@ export default function AdminPortal() {
     setHistoryLoading(true)
     setHistoryError('')
 
-    const { data, error } = await supabase
+    // Confirm the read runs under an authenticated session, since RLS SELECT
+    // policies on case_status_history are scoped to the authenticated role.
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    const activeSession = sessionData?.session ?? null
+
+    console.log('Case history read auth check:', {
+      caseId,
+      hasSession: Boolean(activeSession),
+      userId: activeSession?.user?.id ?? null,
+      userRole: activeSession?.user?.role ?? null,
+      sessionError,
+    })
+
+    const { data, error, status } = await supabase
       .from('case_status_history')
       .select('*')
       .eq('case_id', caseId)
       .order('created_at', { ascending: true })
 
     if (error) {
-      console.error('Error loading case history:', error)
+      console.error('Error loading case history:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        status,
+        raw: error,
+        caseId,
+      })
+
+      const historyReadErrorParts = [
+        error.message,
+        error.code ? `code: ${error.code}` : null,
+        error.details ? `details: ${error.details}` : null,
+        error.hint ? `hint: ${error.hint}` : null,
+      ].filter(Boolean)
+
       setCaseHistory([])
-      setHistoryError('Unable to load the case timeline.')
+      setHistoryError(
+        `Unable to load the case timeline — ${
+          historyReadErrorParts.join(' | ') || 'unknown Supabase error'
+        }`
+      )
     } else {
+      console.log('Case history read result:', {
+        caseId,
+        rowCount: data?.length ?? 0,
+      })
       setCaseHistory(data || [])
     }
 
@@ -916,10 +963,7 @@ export default function AdminPortal() {
         <nav className="space-y-2">
           <button
             type="button"
-            onClick={() => {
-              setSelectedCase(null)
-              setActiveView('overview')
-            }}
+            onClick={() => closeCaseWorkspace('overview')}
             className="block w-full rounded-xl px-4 py-3 text-left text-sm font-semibold text-blue-100 transition hover:bg-white/10"
           >
             Overview
@@ -927,7 +971,7 @@ export default function AdminPortal() {
 
           <button
             type="button"
-            onClick={() => setSelectedCase(null)}
+            onClick={() => closeCaseWorkspace()}
             className="block w-full rounded-xl bg-white/15 px-4 py-3 text-left text-sm font-semibold text-white"
           >
             Cases
@@ -949,7 +993,7 @@ export default function AdminPortal() {
 
             <button
               type="button"
-              onClick={() => setSelectedCase(null)}
+              onClick={() => closeCaseWorkspace()}
               className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-[#102a56]"
             >
               ← Back to Cases
@@ -1670,6 +1714,7 @@ export default function AdminPortal() {
                   console.error('Error creating status history:', historyError)
                 }
 
+                await loadCases()
                 await loadCaseHistory(selectedCase.id)
 
                 setSelectedCase({
