@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 
+// Allowed forward paths for the case lifecycle. Empty array means the status is
+// terminal or must be advanced through the Review Request workflow instead.
+const STATUS_TRANSITIONS = {
+  'Pending Review': [],
+  Approved: ['Active', 'On Hold', 'Cancelled'],
+  Active: ['On Hold', 'Completed', 'Cancelled'],
+  'On Hold': ['Approved', 'Active', 'Cancelled'],
+  Completed: [],
+  Cancelled: [],
+}
+
 export default function AdminPortal() {
   const [session, setSession] = useState(null)
   const [authChecking, setAuthChecking] = useState(true)
@@ -88,6 +99,9 @@ export default function AdminPortal() {
   const [selectedCase, setSelectedCase] = useState(null)
   const [updateStatusOpen, setUpdateStatusOpen] = useState(false)
   const [newStatus, setNewStatus] = useState('')
+  const [statusNote, setStatusNote] = useState('')
+  const [updateStatusLoading, setUpdateStatusLoading] = useState(false)
+  const [updateStatusError, setUpdateStatusError] = useState('')
   const [assignDriverOpen, setAssignDriverOpen] = useState(false)
   const [selectedDriver, setSelectedDriver] = useState('')
   const [reviewOpen, setReviewOpen] = useState(false)
@@ -118,6 +132,7 @@ export default function AdminPortal() {
   const [assignDriverError, setAssignDriverError] = useState('')
   const [caseSearchTerm, setCaseSearchTerm] = useState('')
   const [caseStatusFilter, setCaseStatusFilter] = useState('')
+  const [caseDriverIds, setCaseDriverIds] = useState({})
 
   const [createCaseOpen, setCreateCaseOpen] = useState(false)
   const [createCaseLoading, setCreateCaseLoading] = useState(false)
@@ -213,9 +228,30 @@ export default function AdminPortal() {
     setCasesLoading(false)
   }
 
+  // Driver assignments live on public.trips, so the case list needs its own
+  // lookup of which cases already have a driver.
+  async function loadCaseDriverAssignments() {
+    const { data, error } = await supabase.from('trips').select('case_id, driver_id')
+
+    if (error) {
+      console.error('Error loading trip driver assignments:', error)
+      return
+    }
+
+    const assignments = {}
+    for (const trip of data || []) {
+      if (trip.case_id && trip.driver_id) {
+        assignments[trip.case_id] = trip.driver_id
+      }
+    }
+
+    setCaseDriverIds(assignments)
+  }
+
   useEffect(() => {
     if (session) {
       loadCases()
+      loadCaseDriverAssignments()
     }
   }, [session])
 
@@ -526,6 +562,118 @@ export default function AdminPortal() {
     setReviewOpen(false)
   }
 
+  async function handleUpdateStatus() {
+    if (!selectedCase || !newStatus || newStatus === selectedCase.status) return
+
+    setUpdateStatusLoading(true)
+    setUpdateStatusError('')
+
+    const previousStatus = selectedCase.status
+
+    const { data: updatedCases, error } = await supabase
+      .from('cases')
+      .update({ status: newStatus })
+      .eq('id', selectedCase.id)
+      .select()
+
+    if (error) {
+      console.error('Error updating case status:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        raw: error,
+        caseId: selectedCase.id,
+        attemptedStatus: newStatus,
+      })
+
+      const statusErrorParts = [
+        error.message,
+        error.code ? `code: ${error.code}` : null,
+        error.details ? `details: ${error.details}` : null,
+        error.hint ? `hint: ${error.hint}` : null,
+      ].filter(Boolean)
+
+      // 23514 is a check-constraint violation, normally cases_status_check.
+      const constraintNotice =
+        error.code === '23514'
+          ? ` The database rejected the status "${newStatus}". The cases_status_check constraint in Supabase must be updated to allow it.`
+          : ''
+
+      setUpdateStatusError(
+        `Unable to update the case status — ${
+          statusErrorParts.join(' | ') || 'unknown Supabase error'
+        }.${constraintNotice}`
+      )
+      setUpdateStatusLoading(false)
+      return
+    }
+
+    const updatedCase = updatedCases?.[0]
+
+    if (!updatedCase) {
+      console.error('Case status update affected no rows:', {
+        caseId: selectedCase.id,
+        caseNumber: selectedCase.case_number,
+        attemptedStatus: newStatus,
+        returnedRows: updatedCases,
+      })
+
+      setUpdateStatusError(
+        'The case status was not saved. You may not have permission to update this case.'
+      )
+      setUpdateStatusLoading(false)
+      return
+    }
+
+    const historyRow = {
+      case_id: updatedCase.id,
+      previous_status: previousStatus,
+      new_status: updatedCase.status,
+      changed_by: 'Administrator',
+      note: statusNote.trim() || `Case status changed to ${updatedCase.status}.`,
+    }
+
+    const { error: historyError } = await supabase
+      .from('case_status_history')
+      .insert(historyRow)
+
+    setSelectedCase((previousCase) => ({
+      ...previousCase,
+      ...updatedCase,
+    }))
+
+    await loadCases()
+    await loadCaseHistory(updatedCase.id)
+
+    if (historyError) {
+      console.error('Error creating status history:', {
+        message: historyError.message,
+        code: historyError.code,
+        details: historyError.details,
+        hint: historyError.hint,
+        raw: historyError,
+        attemptedRow: historyRow,
+      })
+
+      const historyErrorParts = [
+        historyError.message,
+        historyError.code ? `code: ${historyError.code}` : null,
+        historyError.details ? `details: ${historyError.details}` : null,
+        historyError.hint ? `hint: ${historyError.hint}` : null,
+      ].filter(Boolean)
+
+      setHistoryError(
+        `The case status was saved, but the timeline entry failed to save — ${
+          historyErrorParts.join(' | ') || 'unknown Supabase error'
+        }`
+      )
+    }
+
+    setUpdateStatusLoading(false)
+    setUpdateStatusOpen(false)
+  }
+
   function resetCreateCaseForm() {    setRiderFirstName('')
     setRiderLastName('')
     setRiderPhone('')
@@ -652,25 +800,43 @@ export default function AdminPortal() {
     setCreateCaseSuccess(`Case ${caseNumber} was created successfully.`)
   }
 
-  const stats = [
-    { label: 'Active Cases', value: '12', detail: 'Across current service areas' },
-    { label: 'Available Cases', value: '4', detail: 'Waiting for driver claim' },
-    { label: 'Drivers Working Today', value: '7', detail: 'Currently scheduled' },
-    { label: 'Pending Documents', value: '3', detail: 'Need review' },
-  ]
-
   const newRequestsCount = databaseCases.filter(
     (caseItem) => caseItem.status === 'Pending Review'
   ).length
   const availableCasesCount = databaseCases.filter(
-    (caseItem) => caseItem.status === 'Available'
+    (caseItem) => caseItem.status === 'Approved' && !caseDriverIds[caseItem.id]
   ).length
   const assignedCasesCount = databaseCases.filter(
-    (caseItem) => caseItem.status === 'Assigned' || caseItem.status === 'Active'
+    (caseItem) =>
+      (caseItem.status === 'Approved' || caseItem.status === 'Active') &&
+      Boolean(caseDriverIds[caseItem.id])
   ).length
   const completedCasesCount = databaseCases.filter(
     (caseItem) => caseItem.status === 'Completed'
   ).length
+
+  const stats = [
+    {
+      label: 'New Requests',
+      value: String(newRequestsCount),
+      detail: 'Awaiting review',
+    },
+    {
+      label: 'Available Cases',
+      value: String(availableCasesCount),
+      detail: 'Approved without a driver',
+    },
+    {
+      label: 'Assigned Cases',
+      value: String(assignedCasesCount),
+      detail: 'Driver assigned',
+    },
+    {
+      label: 'Completed Cases',
+      value: String(completedCasesCount),
+      detail: 'Completed transportation',
+    },
+  ]
 
   const filteredCases = databaseCases.filter((caseItem) => {
     const term = caseSearchTerm.trim().toLowerCase()
@@ -685,6 +851,25 @@ export default function AdminPortal() {
 
     return matchesSearch && matchesStatus
   })
+
+  const caseIsClosed =
+    selectedCase?.status === 'Completed' || selectedCase?.status === 'Cancelled'
+  const allowedNextStatuses = STATUS_TRANSITIONS[selectedCase?.status] || []
+
+  function statusBadgeClass(status) {
+    switch (status) {
+      case 'Active':
+        return 'bg-emerald-50 text-emerald-700'
+      case 'Approved':
+        return 'bg-blue-50 text-blue-700'
+      case 'Completed':
+        return 'bg-slate-100 text-slate-600'
+      case 'Cancelled':
+        return 'bg-red-50 text-red-700'
+      default:
+        return 'bg-amber-50 text-amber-700'
+    }
+  }
 
   const createCaseModal = createCaseOpen && (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
@@ -1101,13 +1286,9 @@ export default function AdminPortal() {
             </div>
 
             <span
-              className={`w-fit rounded-full px-4 py-2 text-sm font-semibold ${
-                selectedCase.status === 'Active'
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : selectedCase.status === 'Available'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'bg-amber-50 text-amber-700'
-              }`}
+              className={`w-fit rounded-full px-4 py-2 text-sm font-semibold ${statusBadgeClass(
+                selectedCase.status
+              )}`}
             >
               {selectedCase.status}
             </span>
@@ -1307,36 +1488,41 @@ export default function AdminPortal() {
                 <div className="mt-6 space-y-3">
                   <button
                     type="button"
+                    disabled={caseIsClosed}
                     onClick={() => {
                       setReviewDecision('')
                       setReviewNotes('')
                       setReviewError('')
                       setReviewOpen(true)
                     }}
-                    className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#102a56] transition hover:bg-blue-50"
+                    className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#102a56] transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:bg-white/40 disabled:text-white/60"
                   >
                     Review Request
                   </button>
 
                   <button
                     type="button"
+                    disabled={caseIsClosed}
                     onClick={() => {
                       setSelectedDriver('')
                       setAssignDriverError('')
                       setAssignDriverOpen(true)
                     }}
-                    className="w-full rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white"
+                    className="w-full rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-white/40 disabled:hover:bg-transparent"
                   >
                     Assign Driver
                   </button>
 
                   <button
                     type="button"
+                    disabled={caseIsClosed || allowedNextStatuses.length === 0}
                     onClick={() => {
-                      setNewStatus(selectedCase.status)
+                      setNewStatus('')
+                      setStatusNote('')
+                      setUpdateStatusError('')
                       setUpdateStatusOpen(true)
                     }}
-                    className="w-full rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                    className="w-full rounded-xl border border-white/20 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-white/40 disabled:hover:bg-transparent"
                   >
                     Update Status
                   </button>
@@ -1843,6 +2029,7 @@ export default function AdminPortal() {
                   await loadCases()
                   await loadCaseHistory(selectedCase.id)
                   await loadAssignedDriver(selectedCase.id)
+                  await loadCaseDriverAssignments()
 
                   setAssignedDriverName(driver.name)
 
@@ -1880,7 +2067,7 @@ export default function AdminPortal() {
 
       {updateStatusOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="w-full max-w-xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
 
             <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5 sm:px-8">
               <div>
@@ -1893,7 +2080,7 @@ export default function AdminPortal() {
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  {selectedCase.id} · {selectedCase.service}
+                  {selectedCase.case_number} · {selectedCase.service_type}
                 </p>
               </div>
 
@@ -1919,16 +2106,7 @@ export default function AdminPortal() {
                       Case
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-700">
-                      {selectedCase.id}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-                      County
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-700">
-                      {selectedCase.county}
+                      {selectedCase.case_number}
                     </p>
                   </div>
 
@@ -1937,7 +2115,7 @@ export default function AdminPortal() {
                       Service
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-700">
-                      {selectedCase.service}
+                      {selectedCase.service_type}
                     </p>
                   </div>
 
@@ -1949,45 +2127,77 @@ export default function AdminPortal() {
                       {selectedCase.status}
                     </p>
                   </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      Assigned Driver
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {assignedDriverName || 'Not assigned'}
+                    </p>
+                  </div>
                 </div>
               </section>
 
               <section>
                 <label
                   htmlFor="case-status"
-                  className="text-sm font-semibold text-[#102a56]"
+                  className="block text-sm font-semibold text-slate-700"
                 >
                   New Status
                 </label>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  Select the new operational status for this case.
+                  Select the next operational status for this case.
                 </p>
 
-                <select
-                  id="case-status"
-                  value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value)}
-                  className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-[#174c91] focus:ring-2 focus:ring-blue-100"
-                >
-                  <option value="">Select a status</option>
-                  <option value="Pending Review">Pending Review</option>
-                  <option value="Approved">Approved</option>
-                  <option value="Assigned">Driver Assigned</option>
-                  <option value="Scheduled">Scheduled</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Completed">Completed</option>
-                  <option value="On Hold">On Hold</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
+                {allowedNextStatuses.length === 0 ? (
+                  <p className="mt-3 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                    {selectedCase.status === 'Pending Review'
+                      ? 'Cases in Pending Review must be advanced through Review Request.'
+                      : 'This case is closed and cannot be changed further.'}
+                  </p>
+                ) : (
+                  <select
+                    id="case-status"
+                    value={newStatus}
+                    onChange={(event) => setNewStatus(event.target.value)}
+                    className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-[#174c91] focus:ring-2 focus:ring-blue-100"
+                  >
+                    <option value="">Select a status</option>
+                    {allowedNextStatuses.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </section>
 
-              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                <p className="text-sm leading-6 text-blue-800">
-                  This status update is currently a development preview. Status
-                  history and permanent case records will be connected to the Hebi
-                  database during the database phase.
+              <section>
+                <label className="block text-sm font-semibold text-slate-700">
+                  Status Note
+                </label>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Optional internal note recorded on the case timeline.
                 </p>
+
+                <textarea
+                  rows="4"
+                  value={statusNote}
+                  onChange={(event) => setStatusNote(event.target.value)}
+                  placeholder="Add context for this status change..."
+                  className="mt-3 w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-700 outline-none focus:border-[#174c91]"
+                />
+              </section>
+
+              <div aria-live="polite" className="min-h-6">
+                {updateStatusError && (
+                  <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {updateStatusError}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -2002,17 +2212,15 @@ export default function AdminPortal() {
 
               <button
                 type="button"
-                disabled={!newStatus || newStatus === selectedCase.status}
-                onClick={() => {
-                  setSelectedCase({
-                    ...selectedCase,
-                    status: newStatus,
-                  })
-                  setUpdateStatusOpen(false)
-                }}
+                disabled={
+                  !newStatus ||
+                  newStatus === selectedCase.status ||
+                  updateStatusLoading
+                }
+                onClick={handleUpdateStatus}
                 className="rounded-xl bg-[#102a56] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#174c91] disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                Save Status
+                {updateStatusLoading ? 'Updating Status...' : 'Update Status'}
               </button>
             </div>
 
@@ -2290,12 +2498,12 @@ export default function AdminPortal() {
                     className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-600 outline-none"
                   >
                     <option value="">All Statuses</option>
-                    <option value="Pending Review">New Request</option>
-                    <option value="Available">Available</option>
-                    <option value="Claimed">Claimed</option>
-                    <option value="Assigned">Assigned</option>
-                    <option value="Scheduled">Scheduled</option>
+                    <option value="Pending Review">Pending Review</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Active">Active</option>
+                    <option value="On Hold">On Hold</option>
                     <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
                   </select>
                 </div>
               </div>
@@ -2335,13 +2543,9 @@ export default function AdminPortal() {
                       </div>
 
                       <span
-                        className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${
-                          caseItem.status === 'Active'
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : caseItem.status === 'Available'
-                            ? 'bg-blue-50 text-blue-700'
-                            : 'bg-amber-50 text-amber-700'
-                        }`}
+                        className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass(
+                          caseItem.status
+                        )}`}
                       >
                         {caseItem.status}
                       </span>
@@ -2723,13 +2927,9 @@ export default function AdminPortal() {
                     </div>
 
                     <span
-                      className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${
-                        caseItem.status === 'Active'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : caseItem.status === 'Available'
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'bg-amber-50 text-amber-700'
-                      }`}
+                      className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${statusBadgeClass(
+                        caseItem.status
+                      )}`}
                     >
                       {caseItem.status}
                     </span>
